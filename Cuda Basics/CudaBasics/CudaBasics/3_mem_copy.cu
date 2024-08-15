@@ -24,3 +24,19 @@ int main() {
 
 	return 0;
 }
+
+// Typical CUDA program flow:
+/*
+1. Load data into host memory 
+	- fread/ rand
+2. Allocate memory on the device
+	- cudaMemAlloc
+3. Copy data from host to device memory
+	- cudaMemcpy
+4. Execute the kernel
+	- kernel<<<1, n>>>(d_a)
+5. Copy the result back to the host
+	- cudaMemcpy
+6. Free the device memory
+	- cudaFree
+*/

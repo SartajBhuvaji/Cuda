@@ -15,4 +15,4 @@ Typical Configuration
 - 128-1024 threads per block
 - Total 2k-100k threads
 - You can launch a kernel with millions of threads
-*/ 
+*/
