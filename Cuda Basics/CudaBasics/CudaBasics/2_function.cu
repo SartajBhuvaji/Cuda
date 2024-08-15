@@ -18,7 +18,18 @@ int main() {
 	int n = 10;
 	//simple_loop << <1, 1 >> > (n);  // <<<1,1>>> is a kernel launch configuration // 1 block and 1 thread
 	threaded_loop << <1, n >> > ();  // <<<1,1>>> is a kernel launch configuration // 1 block and n threads
-	
+
+	cudaDeviceSynchronize();   // cudaDeviceSynchronize() is a function that waits for the device to finish its execution
+	return 0;
+}
+t i = 0; i < n; i++) {
+		printf(i*i);
+	}
+}
+
+int main() {
+	int n = 10;
+	dkernel << <1, 1 >> > (n);  // <<<1,1>>> is a kernel launch configuration // 1 block and 1 thread
 	cudaDeviceSynchronize();   // cudaDeviceSynchronize() is a function that waits for the device to finish its execution
 	return 0;
 }
