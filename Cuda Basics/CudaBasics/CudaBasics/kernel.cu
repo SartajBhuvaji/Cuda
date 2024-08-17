@@ -35,6 +35,7 @@ __global__ void dkernel() {
 #define M 6
 __global__ void dkernel_2D(unsigned* matrix) {
 	unsigned id = threadIdx.x * blockDim.y + threadIdx.y;
+	printf("%d %d %d = %d\n", threadIdx.x, blockDim.y, threadIdx.y, id);
 	matrix[id] = id;
 }
 
@@ -66,3 +67,37 @@ int main() {
 	cudaDeviceSynchronize();
 	return 0;
 }
+
+
+// Output:
+/*
+* Actual representation of the matrix in the 1D array in the GPU's global memory
+* | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 |
+
+
+* Output of the program
+| 0 | 1 | 2 | 3 | 4 | 5  |
+| 6 | 7 | 8 | 9 | 10 | 11 |
+| 12 | 13 | 14 | 15 | 16 | 17 |
+| 18 | 19 | 20 | 21 | 22 | 23 |
+| 24 | 25 | 26 | 27 | 28 | 29 |
+
+*/
+/*
+
+*Explanation:
+
+ In CUDA, when you represent a matrix on the GPU, it is typically stored as a 1D array in the GPU's global memory. 
+ This is because CUDA does not natively support multidimensional arrays in global memory. 
+ Instead, you use a flat 1D array and manually calculate the indices to access elements as if they were in a 2D (or higher-dimensional) structure.
+
+*/
+
+/*
+
+Mapping a 2D Matrix to a 1D Array
+To represent a 2D matrix in a 1D array, you typically map the 2D coordinates to a 1D index using the following formula:
+
+1D index = row index * number of columns + column index
+
+*/
