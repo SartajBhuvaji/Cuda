@@ -18,11 +18,8 @@ Typical Configuration
 - You can launch a kernel with millions of threads
 */
 
-
 #include<cuda.h>
 #include<stdio.h>
-
-
 
 __global__ void dkernel() {
 	if (threadIdx.x == 0 && blockIdx.x == 0 &&
@@ -47,7 +44,7 @@ int main() {
 	//dim3 block(2, 3, 4); // 3D block of threads
 	//dim3 thread(5, 6, 7); // 
 	//dkernel << <block, thread >> > ();
-	
+
 	// For:dkernel_2D
 	dim3 block(N, M, 1); // 2D block of threads of 5*6 = 30 threads
 	unsigned* matrix, * hmatrix;
@@ -61,7 +58,7 @@ int main() {
 
 	for (unsigned ii = 0; ii < N; ++ii) {
 		for (unsigned jj = 0; jj < M; ++jj) {
-			printf("%2d ", hmatrix[ii * M + jj]);
+			printf("%d ", hmatrix[ii * M + jj]);
 		}
 		printf("\n");
 	}

@@ -58,7 +58,7 @@ int main() {
 
 	for (unsigned ii = 0; ii < N; ++ii) {
 		for (unsigned jj = 0; jj < M; ++jj) {
-			printf("%2d ", hmatrix[ii * M + jj]);
+			printf("%d ", hmatrix[ii * M + jj]);
 		}
 		printf("\n");
 	}
