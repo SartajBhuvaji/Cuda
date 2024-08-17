@@ -3,8 +3,8 @@
 #define N 4
 
 __global__ void matAdd(int* A, int* B, int* C) {
-    int i = threadIdx.x;
-    int j = threadIdx.y;
+	int i = threadIdx.x; // For single block, we can use threadIdx.x and threadIdx.y
+    int j = threadIdx.y; 
 
     // Ensure that indices are within the matrix bounds
     if (i < N && j < N) {
@@ -46,12 +46,12 @@ int main() {
 
     // Print result matrix
     printf("Result matrix C:\n");
-    for (int i = 0; i < N * N; ++i) {
-        printf("%d ", h_C[i]);
-        if ((i + 1) % N == 0) {
-            printf("\n");
-        }
-    }
+	for (int i = 0; i < N * N; ++i) {
+		printf("%d ", h_C[i]);
+		if ((i + 1) % N == 0) {
+			printf("\n");
+		}
+	}
 
     // Free device memory
     cudaFree(d_A);
