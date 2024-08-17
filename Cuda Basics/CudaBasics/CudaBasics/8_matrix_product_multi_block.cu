@@ -1,14 +1,18 @@
 ﻿#include <cuda.h>
 #include <stdio.h>
 
-#define N 4  // Size of matrix (N x N)
+#define N 32  // Size of matrix (N x N)
 
-__global__ void matAdd(int* A, int* B, int* C) {
+__global__ void matMul(int* A, int* B, int* C) {
     int i = blockIdx.x * blockDim.x + threadIdx.x; // Calculate row index in multi-block grid
     int j = blockIdx.y * blockDim.y + threadIdx.y; // Calculate column index in multi-block grid
 
     if (i < N && j < N) {
-        C[i * N + j] = A[i * N + j] + B[i * N + j];
+        int sum = 0;
+        for (int k = 0; k < N; ++k) {
+            sum += A[i * N + k] * B[k * N + j];
+        }
+        C[i * N + j] = sum;
     }
 }
 
@@ -39,7 +43,7 @@ int main() {
     dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x,
         (N + threadsPerBlock.y - 1) / threadsPerBlock.y); // We calculate the number of blocks needed based on the matrix size
 
-    matAdd << <numBlocks, threadsPerBlock >> > (d_A, d_B, d_C);
+    matMul << <numBlocks, threadsPerBlock >> > (d_A, d_B, d_C);
     cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
 
     // Print result matrix
