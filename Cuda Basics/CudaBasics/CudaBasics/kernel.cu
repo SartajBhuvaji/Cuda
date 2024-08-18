@@ -1,123 +1,74 @@
-﻿// Linear regression using gradient descent in CUDA
+﻿#include<cuda.h>
+#include<stdio.h>
+#include<math.h>
 
-#include <cuda.h>
-#include <stdio.h>
-#include <vector>
-
-__global__ void gradient_descent(const float* __restrict__ X, const float* __restrict__ Y, float* theta, const float alpha, const int m) {
-	__shared__ float s_gradient[2]; // Shared memory for gradient
-    const int tid = threadIdx.x;
-    const int stride = blockDim.x;
-
-    // Initialize shared memory
-    if (tid < 2) {
-		s_gradient[tid] = 0.0f; // Initialize shared memory to 0
-    }
-    __syncthreads();
-
-    // Compute partial sums
-	float local_gradient[2] = { 0.0f, 0.0f }; // Local gradient for each thread
-    for (int i = tid; i < m; i += stride) {
-        const float prediction = theta[0] + theta[1] * X[i];
-        const float error = prediction - Y[i];
-        local_gradient[0] += error;
-        local_gradient[1] += error * X[i];
-    }
-
-    // Reduce within the block
-    for (int j = 0; j < 2; ++j) { 
-        atomicAdd(&s_gradient[j], local_gradient[j]);
-    }
-	__syncthreads(); // Wait for all threads to finish updating shared memory
-
-    // Update theta
-    if (tid < 2) {
-		float gradient = s_gradient[tid] / m; // Average gradient
-		theta[tid] -= alpha * gradient; // Update theta
-    }
+__global__ void vectorAdd(int* A, int* B, int* C, int N) {
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	if (i < N) {
+		C[i] = A[i] + B[i];
+	}
 }
 
-
-std::vector<std::vector<float>> get_data() {
-    // Sample dataset
-    std::vector<std::vector<float>> data = {
-        {1.0, 2.0},   // {X, Y}
-        {2.0, 3.5},
-        {3.0, 7.0},   // Outlier
-        {4.0, 6.5},
-        {5.0, 8.0},
-        {6.0, 11.0},  // Outlier
-        {7.0, 9.5},
-        {8.0, 11.5},
-        {9.0, 10.0},  // Outlier
-        {10.0, 13.0},
-        {11.0, 14.5},
-        {12.0, 16.0},
-        {13.0, 19.0}, // Outlier
-        {14.0, 17.5},
-        {15.0, 20.0}
-    };
-    return data;
-}
-
-void initialize_data(const std::vector<std::vector<float>>& data, float*& d_X, float*& d_Y, int& m) {
-    m = data.size();
-    float* h_X = new float[m];
-    float* h_Y = new float[m];
-
-    for (int i = 0; i < m; ++i) {
-        h_X[i] = data[i][0];
-        h_Y[i] = data[i][1];
-    }
-
-    cudaMalloc(&d_X, m * sizeof(float));
-    cudaMalloc(&d_Y, m * sizeof(float));
-    cudaMemcpy(d_X, h_X, m * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_Y, h_Y, m * sizeof(float), cudaMemcpyHostToDevice);
-
-    delete[] h_X;
-    delete[] h_Y;
+void matrixFill(int* A, int N) {
+	for (int i = 0; i < N; i++) {
+		A[i] = rand() % 100;
+	}
 }
 
 int main() {
+	// Step 1 : Initialize the variables
+	int n = 1 << 16;
 
-	// Load data
-	std::vector<std::vector<float>> data = get_data();
+	// Step 2 : Allocate memory on the host
+	int* h_a, * h_b, * h_c;
+	// Step 3 : Allocate memory on the device
+	int* d_a, * d_b, * d_c;
 
-    float* d_X, * d_Y, * d_theta;
-	int m; // size of dataset
+	// Step 4 : Calculate the size of the memory
+	size_t bytes = n * sizeof(int);
 
-	// Initialize data
-    initialize_data(data, d_X, d_Y, m);
+	// Step 5 : Allocate memory on the host
+	h_a = (int*)malloc(bytes);
+	h_b = (int*)malloc(bytes);
+	h_c = (int*)malloc(bytes);
 
-    // Allocate memory for theta (parameters)
-    float h_theta[2] = { 0.0f, 0.0f }; // Initialize theta to 0 (intercept and slope)
-    cudaMalloc(&d_theta, 2 * sizeof(float));
-    cudaMemcpy(d_theta, h_theta, 2 * sizeof(float), cudaMemcpyHostToDevice);
+	// Step 6 : Allocate memory on the device
+	cudaMalloc(&d_a, bytes);
+	cudaMalloc(&d_b, bytes);
+	cudaMalloc(&d_c, bytes);
 
-    // Set learning rate and number of iterations
-	float alpha = 0.01; // Learning rate
-    int num_iters = 1000;
-    int threadsPerBlock = 256; 
-    int blocksPerGrid = 1; 
+	// Step 7 : Fill the matrix
+	matrixFill(h_a, n);
+	matrixFill(h_b, n);
 
-    for (int iter = 0; iter < num_iters; ++iter) {
-        gradient_descent << <blocksPerGrid, threadsPerBlock >> > (d_X, d_Y, d_theta, alpha, m);
-        cudaDeviceSynchronize(); // Ensure kernel execution is finished before the next iteration
-    }
+	// Step 8 : Copy the data from host to device
+	cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice);
 
-    // Copy results back to host
-    cudaMemcpy(h_theta, d_theta, 2 * sizeof(float), cudaMemcpyDeviceToHost);
+	// Step 9 : Setup the execution configuration
+	int num_threads = 256;
+	int num_blocks = (int)ceil(n / num_threads);
 
-    // Print the best fit line parameters (intercept and slope)
-    printf("Best fit line parameters:\n");
-    printf("Intercept (Theta[0]): %f\n", h_theta[0]);
-    printf("Slope (Theta[1]): %f\n", h_theta[1]);
+	// Step 10 : Execute the kernel
+	vectorAdd << <num_blocks, num_threads >> > (d_a, d_b, d_c, n);
 
-    // Free memory
-    cudaFree(d_X);
-    cudaFree(d_Y);
-    cudaFree(d_theta);
+	// Step 11 : Copy the result back to the host
+	cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost);
 
-    return 0;
+	// Step 12 : Display the result
+	for (int i = 0; i < 10; i++) {
+		printf("%d + %d = %d\n", h_a[i], h_b[i], h_c[i]);
+	}
+
+	// Step 13 : Free the memory on the host
+	free(h_a);
+	free(h_b);
+	free(h_c);
+
+	// Step 14 : Free the memory on the device
+	cudaFree(d_a);
+	cudaFree(d_b);
+	cudaFree(d_c);
+
+	return 0;
 }
