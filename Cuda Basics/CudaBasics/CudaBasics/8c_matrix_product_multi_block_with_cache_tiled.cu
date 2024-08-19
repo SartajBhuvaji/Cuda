@@ -13,7 +13,7 @@ using namespace std;
 // defining shared memory size// static allcocation
 #define SHMEM_SIZE (16 * 16) // 16x16 tile size
 
-__global__ void matrixMul(int* a, int* b ,int* c, int N ) {
+__global__ void matrixMul(int* a, int* b, int* c, int N) {
 	// Shared memory can be allocated dynamically at runtime or preallocated at compile time
 	//Allocating shared memory
 	__shared__ int A[SHMEM_SIZE]; // shared memory is private to each block
@@ -62,8 +62,8 @@ void verify_result(int* a, int* b, int* c, int N) {
 }
 
 
-void matrixInit(int* a ,int N) {
-	for (int i = 0; i < N*N; i++) {
+void matrixInit(int* a, int N) {
+	for (int i = 0; i < N * N; i++) {
 		a[i] = rand() % 100;
 	}
 }
@@ -100,7 +100,7 @@ int main() {
 	dim3 THREADS(thread, thread);
 	dim3 BLOCKS(blocks, blocks);
 
-	matrixMul<<< BLOCKS, THREADS >>> (a,b,c,N);
+	matrixMul << < BLOCKS, THREADS >> > (a, b, c, N);
 	cudaDeviceSynchronize();
 
 	// verify the result on CPU
