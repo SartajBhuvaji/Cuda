@@ -9,7 +9,7 @@ __global__ void convolution_1d(int* arr, int* mask, int* result, int n, int m) {
 	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 	int radius = m / 2; // calculate the radius of the mask
 
-	int start = tid - radius; 
+	int start = tid - radius;
 	int temp = 0;
 
 	for (int i = 0; i < m; i++) { // each thread calculates the convolution for one element
@@ -43,7 +43,7 @@ void fillArray(int* A, int N) {
 }
 
 int main() {
-	
+
 	int N = 1 << 10; // 1024 element array
 	int M = 3; // Mask size or the convolution window size (preferably an odd no)
 
