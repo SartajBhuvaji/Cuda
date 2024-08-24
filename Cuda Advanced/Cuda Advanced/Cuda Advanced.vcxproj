@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{825DA4A3-B6D6-4C81-ADD7-4F898803D935}</ProjectGuid>
+    <RootNamespace>Cuda_Advanced</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.6.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\sbhuv\Downloads\opencv\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\sbhuv\Downloads\opencv\x64\vc17\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>C:\Users\sbhuv\Downloads\opencv\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\sbhuv\Downloads\opencv\x64\vc17\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opencv_aruco4100d.lib;opencv_bgsegm4100d.lib;opencv_bioinspired4100d.lib;opencv_calib3d4100d.lib;opencv_ccalib4100d.lib;opencv_core4100d.lib;opencv_datasets4100d.lib;opencv_dnn4100d.lib;opencv_dnn_objdetect4100d.lib;opencv_dnn_superres4100d.lib;opencv_dpm4100d.lib;opencv_face4100d.lib;opencv_features2d4100d.lib;opencv_flann4100d.lib;opencv_fuzzy4100d.lib;opencv_gapi4100d.lib;opencv_hfs4100d.lib;opencv_highgui4100d.lib;opencv_imgcodecs4100d.lib;opencv_imgproc4100d.lib;opencv_img_hash4100d.lib;opencv_intensity_transform4100d.lib;opencv_line_descriptor4100d.lib;opencv_mcc4100d.lib;opencv_ml4100d.lib;opencv_objdetect4100d.lib;opencv_optflow4100d.lib;opencv_phase_unwrapping4100d.lib;opencv_photo4100d.lib;opencv_plot4100d.lib;opencv_quality4100d.lib;opencv_rapid4100d.lib;opencv_reg4100d.lib;opencv_rgbd4100d.lib;opencv_saliency4100d.lib;opencv_shape4100d.lib;opencv_signal4100d.lib;opencv_stereo4100d.lib;opencv_stitching4100d.lib;opencv_structured_light4100d.lib;opencv_superres4100d.lib;opencv_surface_matching4100d.lib;opencv_text4100d.lib;opencv_tracking4100d.lib;opencv_video4100d.lib;opencv_videoio4100d.lib;opencv_videostab4100d.lib;opencv_wechat_qrcode4100d.lib;opencv_xfeatures2d4100d.lib;opencv_ximgproc4100d.lib;opencv_xobjdetect4100d.lib;opencv_xphoto4100d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opencv_aruco4100.lib;opencv_bgsegm4100.lib;opencv_bioinspired4100.lib;opencv_calib3d4100.lib;opencv_ccalib4100.lib;opencv_core4100.lib;opencv_datasets4100.lib;opencv_dnn4100.lib;opencv_dnn_objdetect4100.lib;opencv_dnn_superres4100.lib;opencv_dpm4100.lib;opencv_face4100.lib;opencv_features2d4100.lib;opencv_flann4100.lib;opencv_fuzzy4100.lib;opencv_gapi4100.lib;opencv_hfs4100.lib;opencv_highgui4100.lib;opencv_imgcodecs4100.lib;opencv_imgproc4100.lib;opencv_img_hash4100.lib;opencv_intensity_transform4100.lib;opencv_line_descriptor4100.lib;opencv_mcc4100.lib;opencv_ml4100.lib;opencv_objdetect4100.lib;opencv_optflow4100.lib;opencv_phase_unwrapping4100.lib;opencv_photo4100.lib;opencv_plot4100.lib;opencv_quality4100.lib;opencv_rapid4100.lib;opencv_reg4100.lib;opencv_rgbd4100.lib;opencv_saliency4100.lib;opencv_shape4100.lib;opencv_signal4100.lib;opencv_stereo4100.lib;opencv_stitching4100.lib;opencv_structured_light4100.lib;opencv_superres4100.lib;opencv_surface_matching4100.lib;opencv_text4100.lib;opencv_tracking4100.lib;opencv_video4100.lib;opencv_videoio4100.lib;opencv_videostab4100.lib;opencv_wechat_qrcode4100.lib;opencv_xfeatures2d4100.lib;opencv_ximgproc4100.lib;opencv_xobjdetect4100.lib;opencv_xphoto4100.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+    </CudaCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CudaCompile Include="kernel.cu" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.6.targets" />
+  </ImportGroup>
+</Project>
