@@ -9,7 +9,7 @@
 #define NUM_IMAGES 10000    // 10000 images per batch
 #define DATA_BATCHES 5      // Total number of data batches
 
-unsigned char* d_images = NULL, * d_labels = NULL;
+
 void loadBatch(const char* filename, unsigned char* h_images, unsigned char* h_labels, int offset) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
@@ -24,12 +24,12 @@ void loadBatch(const char* filename, unsigned char* h_images, unsigned char* h_l
     fclose(file);
 }
 
-void allocateMemory() {
+void allocateMemory(unsigned char* d_images, unsigned char* d_labels) {
     cudaMalloc(&d_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
     cudaMalloc(&d_labels, NUM_IMAGES * DATA_BATCHES);
 }
 
-void verify_GPUload() {
+void verify_GPUload(unsigned char* d_images, unsigned char* d_labels) {
     
     unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
     unsigned char* h_labels = (unsigned char*)malloc(NUM_IMAGES * DATA_BATCHES);
@@ -59,8 +59,7 @@ void verify_GPUload() {
 
 }
 
-
-void verify_GPU_batch_load() {
+void verify_GPU_batch_load(unsigned char* d_images, unsigned char* d_labels) {
 	printf("Verifying GPU batch load\n");
     // load images to CPU
     unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
@@ -106,35 +105,41 @@ void transferToCUDA(unsigned char* d_images, unsigned char* h_images, unsigned c
     cudaMemcpy(d_labels, h_labels, NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
 }
 
-
 std::tuple<unsigned char*, unsigned char*> load_data() {
-   
+    unsigned char* d_images = nullptr;
+    unsigned char* d_labels = nullptr;
+
     unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
     unsigned char* h_labels = (unsigned char*)malloc(NUM_IMAGES * DATA_BATCHES);
 
-    if (h_images == NULL || h_labels == NULL) {
+    if (h_images == nullptr || h_labels == nullptr) {
         printf("Error: Memory allocation failed\n");
         exit(1);
     }
 
-    allocateMemory();
+    cudaMalloc(&d_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
+    cudaMalloc(&d_labels, NUM_IMAGES * DATA_BATCHES);
+
+    if (d_images == nullptr || d_labels == nullptr) {
+        printf("Error: CUDA memory allocation failed\n");
+        exit(1);
+    }
 
     const char* base_path = "C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\cifar-10\\data_batch_";
     char full_path[256];
 
-	// Load all data batches
+    // Load all data batches
     for (int i = 1; i <= DATA_BATCHES; i++) {
         snprintf(full_path, sizeof(full_path), "%s%d.bin", base_path, i);
         loadBatch(full_path, h_images, h_labels, (i - 1) * NUM_IMAGES);
     }
 
-    transferToCUDA(d_images, h_images, d_labels, h_labels);
+    cudaMemcpy(d_images, h_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_labels, h_labels, NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
     printf("Data loaded and transferred to CUDA\n");
 
     free(h_images);
     free(h_labels);
-
-    //verify_GPU_batch_load();
 
     return std::make_tuple(d_images, d_labels);
 }

@@ -29,27 +29,37 @@ __global__ void convert_to_unsigened_char(float* d_images_float, unsigned char* 
 
 
 
+void preprocess_images(unsigned char*& d_images, unsigned char*& d_labels) {
+    // Step1. Convert to float
+    float* d_images_float, * d_labels_float;
+    cudaMalloc(&d_images_float, IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float));
+    cudaMalloc(&d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
 
-void preprocess_images(unsigned char* d_images, unsigned char* d_labels) {
+    int totalThreads = IMG_SIZE * NUM_IMAGES * DATA_BATCHES;
+    int blockSize = 256;
+    int gridSize = (totalThreads + blockSize - 1) / blockSize;
 
-	// Step1. Convert to float
-	float* d_images_float, * d_labels_float;
-	cudaMalloc(&d_images_float, IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float));
-	cudaMalloc(&d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
-	convert_to_float << <NUM_IMAGES * DATA_BATCHES, IMG_SIZE >> > (d_images, d_images_float, d_labels, d_labels_float);
-	cudaDeviceSynchronize();
+    convert_to_float << <gridSize, blockSize >> > (d_images, d_images_float, d_labels, d_labels_float);
+    cudaDeviceSynchronize();
+    printf("Converted to float\n");
 
-	printf("Converted to float\n");
-	// Step2. Convert back to unsigned char
-	unsigned char* d_images_new, * d_labels_new;
-	cudaMalloc(&d_images_new, IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
-	cudaMalloc(&d_labels_new, NUM_IMAGES * DATA_BATCHES);
+    // Step2. Convert back to unsigned char
+    unsigned char* d_images_new, * d_labels_new;
+    cudaMalloc(&d_images_new, IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
+    cudaMalloc(&d_labels_new, NUM_IMAGES * DATA_BATCHES);
 
-	//convert_to_unsigened_char << <NUM_IMAGES * DATA_BATCHES, IMG_SIZE >> > (d_images_float, d_images_new, d_labels_float, d_labels_new);
-	//cudaDeviceSynchronize();
-	
-	d_images = d_images_new;
-	d_labels = d_labels_new;
+    convert_to_unsigened_char << <gridSize, blockSize >> > (d_images_float, d_images_new, d_labels_float, d_labels_new);
+    cudaDeviceSynchronize();
 
-	printf("Preprocessing done\n");
+    // Free old memory and update pointers
+    cudaFree(d_images);
+    cudaFree(d_labels);
+    d_images = d_images_new;
+    d_labels = d_labels_new;
+
+    // Free intermediate float arrays
+    cudaFree(d_images_float);
+    cudaFree(d_labels_float);
+
+    printf("Preprocessing done\n");
 }
