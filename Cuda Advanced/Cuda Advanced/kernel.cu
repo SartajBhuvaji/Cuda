@@ -10,11 +10,11 @@
 
 #define IMG_SIZE 32*32*3 // 32x32x3
 #define NUM_IMAGES 10000 // 10000 images per batch
-#define DATA_BATCHES 5      // Total number of data batches
+#define DATA_BATCHES 5   // Total number of data batches
 
 
 void gpu_mem_info() {
-
+    
     size_t free_byte;
     size_t total_byte;
     cudaMemGetInfo(&free_byte, &total_byte);
@@ -25,8 +25,25 @@ void gpu_mem_info() {
 }
 
 
-void convertAndDisplayImage(float* h_images_float, int imageIndex, int width, int height) {
-    // Create a cv::Mat object for the grayscale image
+void convertAndDisplayImage(float* h_images_float, float* h_labels_float) {
+    cv::Mat img(32, 32, CV_8UC3);
+    for (int y = 0; y < 32; y++) {
+        for (int x = 0; x < 32; x++) {
+            for (int c = 0; c < 3; c++) {
+                img.at<cv::Vec3b>(y, x)[c] = static_cast<char>(static_cast<int>(h_images_float[y * 32 + x + c * 1024] * 225.0f));
+            }
+        }
+    }
+    // print RGB value of the first pixel
+    printf("RGB: %d %d %d\n", img.at<cv::Vec3b>(0, 0)[0], img.at<cv::Vec3b>(0, 0)[1], img.at<cv::Vec3b>(0, 0)[2]);
+    cv::resize(img, img, cv::Size(250, 250));
+    cv::imshow("Image", img);
+    printf("Label: %d\n", h_labels_float[0]);
+    cv::waitKey(5000);
+}
+
+
+void convertAndDisplayImage_old(float* h_images_float, int imageIndex, int width, int height) {
     cv::Mat grayscaleImage(height, width, CV_32F);
 
     // Copy the image data into the cv::Mat object
@@ -40,14 +57,11 @@ void convertAndDisplayImage(float* h_images_float, int imageIndex, int width, in
     cv::Mat normalizedImage;
     cv::normalize(grayscaleImage, normalizedImage, 0, 255, cv::NORM_MINMAX, CV_8U);
 
-    // Resize the image to display it larger
     cv::Mat resizedImage;
-    cv::resize(normalizedImage, resizedImage, cv::Size(256, 256), 0, 0, cv::INTER_NEAREST);
-
-    // Display the image
+    cv::resize(normalizedImage, resizedImage, cv::Size(720, 720), 0, 0, cv::INTER_NEAREST);
     cv::imshow("Grayscale Image", resizedImage);
-    cv::waitKey(0);  // Wait for a key press
-    cv::destroyAllWindows();  // Close the window
+    cv::waitKey(0);  
+    cv::destroyAllWindows();  
 }
 
 int main() {
@@ -94,7 +108,7 @@ int main() {
 	printf("Total number of pixels: %d\n", counter);
 
     // Convert and display the first image
-    convertAndDisplayImage(h_images_float, 0, 32, 32);
+    convertAndDisplayImage(h_images_float, h_labels_float);
 
 
 
