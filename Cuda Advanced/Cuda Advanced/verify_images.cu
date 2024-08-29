@@ -6,7 +6,7 @@
 
 #define IMG_SIZE 32*32*3 // 32x32x3
 #define NUM_IMAGES 10000 // 10000 images per batch
-
+#define DATA_BATCHES 5      // Total number of data batches
 
 void verify_GPUload(unsigned char* d_images, unsigned char* d_labels) {
 
@@ -26,6 +26,9 @@ void verify_GPUload(unsigned char* d_images, unsigned char* d_labels) {
 			}
 		}
 	}
+
+	// upsalce image to 250x250
+	
 	cv::imshow("Image", img);
 
 	// display the label
@@ -62,6 +65,8 @@ void verify_GPU_batch_load(unsigned char* d_images, unsigned char* d_labels) {
 		int image_dim = isRGB ? 3 : 1;
 		printf("Image dimension: %d\n", image_dim);
 
+	 
+
 		// view first image
 		cv::Mat img(32, 32, CV_8UC3);
 		for (int y = 0; y < 32; y++) {
@@ -71,6 +76,10 @@ void verify_GPU_batch_load(unsigned char* d_images, unsigned char* d_labels) {
 				}
 			}
 		}
+
+		// print RGB value of the first pixel
+		printf("RGB: %d %d %d\n", img.at<cv::Vec3b>(0, 0)[0], img.at<cv::Vec3b>(0, 0)[1], img.at<cv::Vec3b>(0, 0)[2]);
+		cv::resize(img, img, cv::Size(250, 250));
 		cv::imshow("Image", img);
 		printf("Label: %d\n", h_labels[0]);
 		//cv::imwrite("C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\image" + std::to_string(i) + ".jpg", img);

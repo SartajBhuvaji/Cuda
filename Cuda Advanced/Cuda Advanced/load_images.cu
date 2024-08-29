@@ -5,10 +5,9 @@
 #include <tuple>
 
 
-#define IMG_SIZE (32*32*3)  // 32x32x3
-#define NUM_IMAGES 10000    // 10000 images per batch
+#define IMG_SIZE 32*32*3 // 32x32x3
+#define NUM_IMAGES 10000 // 10000 images per batch
 #define DATA_BATCHES 5      // Total number of data batches
-
 
 void loadBatch(const char* filename, unsigned char* h_images, unsigned char* h_labels, int offset) {
     FILE* file = fopen(filename, "rb");

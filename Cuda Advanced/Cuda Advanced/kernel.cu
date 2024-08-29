@@ -10,6 +10,7 @@
 
 #define IMG_SIZE 32*32*3 // 32x32x3
 #define NUM_IMAGES 10000 // 10000 images per batch
+#define DATA_BATCHES 5      // Total number of data batches
 
 
 int main() {
@@ -24,10 +25,11 @@ int main() {
     }
 
     // Step2. Pre-process data
-    //preprocess_images(d_images, d_labels);
+    //unsigned char* d_gray = preprocess_image(d_images);
 
     // Verify GPU batch load
     verify_GPU_batch_load(d_images, d_labels);
+	
     printf("Batch load verified\n");
 
     // Clean up
