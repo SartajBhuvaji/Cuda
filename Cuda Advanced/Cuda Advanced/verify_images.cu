@@ -81,39 +81,3 @@ void verify_GPU_batch_load(unsigned char* d_images, unsigned char* d_labels) {
 		cv::waitKey(5000);
 	}
 }
-
-void verifyGrayscaleConversion(float* d_images_gray_norm, float* d_labels_float, int numImagesToCheck = 5) {
-	// Allocate host memory for the images and labels
-	float* h_images_gray_norm = new float[32 * 32 * numImagesToCheck];
-	float* h_labels_float = new float[numImagesToCheck];
-
-	// Copy data from device to host
-	cudaMemcpy(h_images_gray_norm, d_images_gray_norm, 32 * 32 * numImagesToCheck * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(h_labels_float, d_labels_float, numImagesToCheck * sizeof(float), cudaMemcpyDeviceToHost);
-
-	for (int i = 0; i < numImagesToCheck; i++) {
-		// Create an OpenCV Mat for the grayscale image
-		cv::Mat grayImage(32, 32, CV_32FC1, h_images_gray_norm + i * 32 * 32);
-
-		// Print some pixel values
-		std::cout << "Image " << i << " (Label: " << h_labels_float[i] << "):" << std::endl;
-		for (int y = 0; y < 5; y++) {
-			for (int x = 0; x < 5; x++) {
-				std::cout << grayImage.at<float>(y, x) << " ";
-			}
-			std::cout << std::endl;
-		}
-		std::cout << std::endl;
-
-		// Display the image
-		cv::Mat displayImage;
-		grayImage.convertTo(displayImage, CV_8UC1, 255.0);
-		cv::resize(displayImage, displayImage, cv::Size(256, 256));
-		cv::imshow("Grayscale Image " + std::to_string(i), displayImage);
-		cv::waitKey(0);
-	}
-
-	cv::destroyAllWindows();
-	delete[] h_images_gray_norm;
-	delete[] h_labels_float;
-}

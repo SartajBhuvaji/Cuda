@@ -25,6 +25,7 @@ C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\float.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\locale.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\malloc.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\math.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\memory.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\process.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\share.h
 C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stddef.h
@@ -166,12 +167,30 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\crt\sm_90_rt.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\cuda_device_runtime_api.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\cuda_runtime.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\cuda_runtime_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_discrete.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_discrete2.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_globals.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_kernel.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_lognormal.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_mrg32k3a.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_mtgp32.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_mtgp32_kernel.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_normal.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_normal_static.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_philox4x32_x.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_poisson.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_precalc.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\curand_uniform.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\device_atomic_functions.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\device_launch_parameters.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\device_types.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\driver_functions.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\driver_types.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\library_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\nv\detail\__preprocessor
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\nv\detail\__target_macros
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\nv\target
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\sm_20_atomic_functions.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\sm_20_intrinsics.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\sm_30_intrinsics.h
@@ -188,6 +207,7 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\texture_types.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_functions.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_functions.hpp
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_types.h
+C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\convolution.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\load_images.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\preprocess_images.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\verify_images.cu

@@ -7,6 +7,62 @@
 #define NUM_IMAGES 10000 // 10000 images per batch
 #define DATA_BATCHES 5
 
+
+
+__global__ void greyscaleNormalization(unsigned char* d_images, float* d_images_float,
+    unsigned char* d_labels, float* d_labels_float,
+    int width, int height, int numImages) {
+
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < width * height * numImages) {
+        int imageIdx = idx / (width * height);
+        int pixelIdx = idx % (width * height); // Get pixel index within image
+
+        // Convert to grayscale and normalize
+        float r = d_images[3 * idx] / 255.0f;
+        float g = d_images[3 * idx + 1] / 255.0f;
+        float b = d_images[3 * idx + 2] / 255.0f;
+
+        // Using the luminosity method
+        float gray = 0.21f * r + 0.72f * g + 0.07f * b;
+        d_images_float[idx] = gray;
+
+        // Convert labels to float (only once per image)
+        if (pixelIdx == 0) {
+            d_labels_float[imageIdx] = static_cast<float>(d_labels[imageIdx]);
+        }
+    }
+}
+
+
+
+void preprocessImage(unsigned char* d_images, float** d_images_float,
+    unsigned char* d_labels, float** d_labels_float)
+{
+    int totalPixels = IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES; // Total number of pixels in all images
+    int blockSize = 256;
+    int gridSize = (totalPixels + blockSize - 1) / blockSize;
+
+    // Allocate device memory for float arrays
+    cudaMalloc(d_images_float, totalPixels * sizeof(float));
+    cudaMalloc(d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
+
+    greyscaleNormalization << <gridSize, blockSize >> > (d_images, *d_images_float, d_labels, *d_labels_float,
+        32, 32, NUM_IMAGES * DATA_BATCHES);
+    cudaDeviceSynchronize();
+
+    // Check for errors
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        printf("CUDA error: %s\n", cudaGetErrorString(error));
+    }
+
+    printf("Preprocessing complete\n");
+}
+
+
+
+/*
 __global__ void convertToGrayscaleAndNormalize(unsigned char* d_images, float* d_images_gray_norm,
     unsigned char* d_labels, float* d_labels_float,
     int width, int height, int numImages) {
@@ -43,3 +99,4 @@ void preprocessImages(unsigned char* d_images, float* d_images_gray_norm,
         32, 32, NUM_IMAGES * DATA_BATCHES);
     cudaDeviceSynchronize();
 }
+*/

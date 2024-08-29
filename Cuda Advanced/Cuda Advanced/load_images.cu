@@ -32,6 +32,7 @@ void allocateMemory(unsigned char* d_images, unsigned char* d_labels) {
 void transferToCUDA(unsigned char* d_images, unsigned char* h_images, unsigned char* d_labels, unsigned char* h_labels) {
     cudaMemcpy(d_images, h_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
     cudaMemcpy(d_labels, h_labels, NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
+
 }
 
 std::tuple<unsigned char*, unsigned char*> load_data() {
@@ -63,8 +64,7 @@ std::tuple<unsigned char*, unsigned char*> load_data() {
         loadBatch(full_path, h_images, h_labels, (i - 1) * NUM_IMAGES);
     }
 
-    cudaMemcpy(d_images, h_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_labels, h_labels, NUM_IMAGES * DATA_BATCHES, cudaMemcpyHostToDevice);
+	transferToCUDA(d_images, h_images, d_labels, h_labels);
     printf("Data loaded and transferred to CUDA\n");
 
     free(h_images);
