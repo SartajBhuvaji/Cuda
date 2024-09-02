@@ -70,14 +70,14 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
     }
 }
 
-// Not working
+// Broken
 void validateConvolutionOutput(const float* input, int inputWidth, int inputHeight, int inputChannels,
     const float* output, int filterSize, int stride = 1, int padding = 0) {
     // Calculate expected output dimensions
 	printf("\nIN VALIDATE CONVOLUTION OUTPUT\n");
     int outputWidth = static_cast<int>(std::floor((inputWidth + 2 * padding - filterSize) / stride + 1));
     int outputHeight = static_cast<int>(std::floor((inputHeight + 2 * padding - filterSize) / stride + 1));
-    int outputChannels = inputChannels;  // Assuming the number of channels doesn't change
+	int outputChannels = inputChannels;  // Number of channels remains the same (3)
 
     // Calculate expected total elements in the output
     int expectedOutputSize = outputWidth * outputHeight * outputChannels;
@@ -89,14 +89,14 @@ void validateConvolutionOutput(const float* input, int inputWidth, int inputHeig
     }
 
     // Assert that the calculated size matches the actual size
-    assert(expectedOutputSize == actualOutputSize && "Convolution output size mismatch");
+    assert(expectedOutputSize ==  && "Convolution output size mismatch");
 
     // If assertion passes, print success message
     printf("Convolution output size validation passed.\n");
     printf("Input dimensions: %d x %d x %d\n", inputWidth, inputHeight, inputChannels);
     printf("Filter size: %d x %d\n", filterSize, filterSize);
     printf("Output dimensions: %d x %d x %d\n", outputWidth, outputHeight, outputChannels);
-    printf("Total output elements: %d\n", expectedOutputSize);
+  //  printf("Total output elements: %d\n", actualOutputSizeexpectedOutputSize); //?
 }
 
 void convolution(float* d_images_float, float* d_labels_float, int inputWidth, int inputHeight, int numImages) {
@@ -116,12 +116,13 @@ void convolution(float* d_images_float, float* d_labels_float, int inputWidth, i
     cudaMalloc(&d_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float));
     cudaMemcpy(d_filter, h_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 blockDim(16, 16);
+    dim3 blockDim(16, 16); // 
     dim3 gridDim(
         (outputWidth + blockDim.x - 1) / blockDim.x,
         (outputHeight + blockDim.y - 1) / blockDim.y,
         numImages
-    );
+	); // 3D grid for multiple images // https://forums.developer.nvidia.com/t/3d-grids/10427
+    // https://forums.developer.nvidia.com/t/cuda-tiling-in-3d-grids-and-3d-blocks-with-shared-memory/201254
 
     convolutionKernel << <gridDim, blockDim >> > (d_images_float, d_output, inputWidth, inputHeight, outputWidth, outputHeight, channels, d_filter);
 
@@ -152,6 +153,8 @@ void convolution(float* d_images_float, float* d_labels_float, int inputWidth, i
 
     printf("Total number of output elements after convolution: %d\n", counter);
     printf("Output dimensions: %d x %d x %d\n", outputWidth, outputHeight, channels);
+     
+    // TODO : RETRUN THE OUTPUT FROM CONVOLUTION
 
     // Free memory
     free(h_output);

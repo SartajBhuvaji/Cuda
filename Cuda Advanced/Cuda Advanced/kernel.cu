@@ -89,8 +89,6 @@ int main() {
     float* d_labels_float = nullptr;
     preprocessImage(d_images, &d_images_float, d_labels, &d_labels_float);
 
-
-
     gpu_mem_info();
 
     cudaFree(d_images);
@@ -126,6 +124,9 @@ int main() {
     // Convert and display the first image
     //convertAndDisplayImage(h_images_float, h_labels_float);
     convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
+
+	
+	// TODO : COLLECT THE OUTPUT FROM CONVOLUTION
 
     // Free the allocated memory
     cudaFree(d_images_float);
