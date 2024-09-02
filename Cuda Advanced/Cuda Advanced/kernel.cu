@@ -123,15 +123,16 @@ int main() {
 
     // Convert and display the first image
     //convertAndDisplayImage(h_images_float, h_labels_float);
-    convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
+    //convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
+    ConvolutionResult conv_result = convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
 
-	
-	// TODO : COLLECT THE OUTPUT FROM CONVOLUTION
 
     // Free the allocated memory
     cudaFree(d_images_float);
     cudaFree(d_labels_float);
     free(h_labels_float);
+    free(conv_result.output);
+    free(conv_result.kernel);
 
     return 0;
 }
