@@ -8,6 +8,7 @@
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\preprocess_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
 
 
 #define IMG_SIZE 32*32*3 // 32x32x3
@@ -178,6 +179,28 @@ int main() {
     printf("Total number of pixels after conv1: %d\n", counter);
     
 
+
+    // Create and use the MaxPoolingLayer
+    MaxPoolingLayer pool1(conv1.getOutputWidth(), conv1.getOutputHeight(), conv1.getOutputChannels(), NUM_IMAGES);
+    float* d_pool_output = pool1.forward(conv1d_output_conv);
+
+    // Now d_pool_output contains the result of max pooling applied to the convolution output
+
+    // You can copy the result back to host if needed
+    int poolOutputWidth = pool1.getOutputWidth();
+    int poolOutputHeight = pool1.getOutputHeight();
+    int poolOutputChannels = pool1.getOutputChannels();
+    float* h_pool_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+    
+	printf("\nPOOL 1 resutls");
+	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+    //cudaMemcpy(h_pool_output, d_pool_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
+
+
+
+
+    /*
     //Conv2
 	ConvolutionLayer conv2(conv1outputWidth, conv1outputHeight, conv1outputChannels, NUM_IMAGES);
 
@@ -193,7 +216,7 @@ int main() {
 
     printf("\nCONV 2 resutls");
 	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", conv2outputWidth, conv2outputHeight, conv2outputChannels);
-
+    */
 
 
     // Convert and display the first image
