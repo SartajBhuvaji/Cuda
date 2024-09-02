@@ -76,10 +76,21 @@ int main() {
         return 1;
     }
 
+	printf("Priting values just after load_data()\n");
+    unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
+    cudaMemcpy(h_images, d_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES, cudaMemcpyDeviceToHost);
+    for (int i = 0; i < 100; i++) {
+        printf("%d ", (int)h_images[i]);
+    }
+    printf("\n");
+
     // Convert data to float and normalize
     float* d_images_float = nullptr;
     float* d_labels_float = nullptr;
     preprocessImage(d_images, &d_images_float, d_labels, &d_labels_float);
+
+
+
     gpu_mem_info();
 
     cudaFree(d_images);
@@ -87,10 +98,13 @@ int main() {
 
 	// copy from device to host
     float* h_labels_float = (float*)malloc(NUM_IMAGES * DATA_BATCHES * sizeof(float));
-	float* h_images_float = (float*)malloc(IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
+    //float* h_images_float = (float*)malloc(IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
+    float* h_images_float = (float*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float));
 
     cudaMemcpy(h_labels_float, d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(h_images_float, d_images_float, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_images_float, d_images_float, IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
+
+    //cudaMemcpy(h_images_float, d_images_float, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
 
     // print the first 10 labels
     for (int i = 0; i < 10; i++) {
@@ -101,8 +115,8 @@ int main() {
     int counter = 0;
 	printf("First images\n");
 	for (int i = 0; i < 1; i++) {
-		for (int j = 0; j < IMG_SIZE / 3; j++) {
-			std::cout << h_images_float[j + i * IMG_SIZE / 3] << " ";
+		for (int j = 0; j < IMG_SIZE ; j++) {
+			std::cout << h_images_float[j + i * IMG_SIZE ] << " ";
 			counter++;
 		}
 		std::cout << std::endl;
@@ -111,7 +125,7 @@ int main() {
 
     // Convert and display the first image
     //convertAndDisplayImage(h_images_float, h_labels_float);
-	convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
+    convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
 
     // Free the allocated memory
     cudaFree(d_images_float);
@@ -122,7 +136,7 @@ int main() {
 }
 
     
-	    /*
+	/*
 
     float* d_images_gray_norm;
     float* d_labels_float;
