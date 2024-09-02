@@ -16,7 +16,7 @@
 
 
 void gpu_mem_info() {
-    
+
     size_t free_byte;
     size_t total_byte;
     cudaMemGetInfo(&free_byte, &total_byte);
@@ -62,8 +62,8 @@ void convertAndDisplayImage_old(float* h_images_float, int imageIndex, int width
     cv::Mat resizedImage;
     cv::resize(normalizedImage, resizedImage, cv::Size(720, 720), 0, 0, cv::INTER_NEAREST);
     cv::imshow("Grayscale Image", resizedImage);
-    cv::waitKey(0);  
-    cv::destroyAllWindows();  
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 }
 
 int main() {
@@ -76,7 +76,7 @@ int main() {
         return -1;
     }
 
-	printf("Priting values just after load_data()\n");
+    printf("Priting values just after load_data()\n");
     unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES);
     cudaMemcpy(h_images, d_images, IMG_SIZE * NUM_IMAGES * DATA_BATCHES, cudaMemcpyDeviceToHost);
     for (int i = 0; i < 100; i++) {
@@ -94,7 +94,7 @@ int main() {
     cudaFree(d_images);
     cudaFree(d_labels);
 
-	// copy from device to host
+    // copy from device to host
     float* h_labels_float = (float*)malloc(NUM_IMAGES * DATA_BATCHES * sizeof(float));
     //float* h_images_float = (float*)malloc(IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
     float* h_images_float = (float*)malloc(IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float));
@@ -109,60 +109,138 @@ int main() {
         std::cout << h_labels_float[i] << std::endl;
     }
 
-	// print the first image
+    
+    
+    // print the first image
     int counter = 0;
-	printf("First images\n");
-	for (int i = 0; i < 1; i++) {
-		for (int j = 0; j < IMG_SIZE ; j++) {
-			std::cout << h_images_float[j + i * IMG_SIZE ] << " ";
-			counter++;
-		}
-		std::cout << std::endl;
-	}
-	printf("Total number of pixels: %d\n", counter);
+    printf("First image before convolution\n");
+    for (int i = 0; i < 1; i++) {
+        for (int j = 0; j < IMG_SIZE; j++) {
+            std::cout << h_images_float[j + i * IMG_SIZE] << " ";
+            counter++;
+        }
+        std::cout << std::endl;
+    }
+    printf("Total number of pixels: %d\n", counter);
+    
+
+
+    //int counter = 0;
+    //printf("First image before convolution\n");
+    //for (int c = 0; c < 3; ++c) {  // Iterate through each channel
+    //    printf("Channel %d:\n", c);
+    //    for (int i = 0; i < 32; ++i) {  // Rows
+    //        for (int j = 0; j < 32; ++j) {  // Columns
+    //            int index = c * 32 * 32 + i * 32 + j;
+    //            printf("%.3f ", h_images_float[index]);
+    //            counter++;
+    //        }
+    //        printf("\n");  // New line after each row
+    //    }
+    //    printf("\n");  // Extra line between channels
+    //}
+    //printf("Total number of pixels: %d\n", counter);
+
+
+    // Create a convolution layer
+    int inputWidth = 32, inputHeight = 32, inputChannels = 3;
+
+    ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
+
+    // Perform forward pass
+    float* conv1d_output_conv = conv1.forward(d_images_float);
+
+    // Allocate host memory for the output
+    int conv1outputWidth = conv1.getOutputWidth();
+    int conv1outputHeight = conv1.getOutputHeight();
+    int conv1outputChannels = conv1.getOutputChannels();
+    float* conv1h_output = (float*)malloc(conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float));
+	float* conv1h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv1outputChannels * sizeof(float));
+
+	printf("Output width: , Output height: , Output channels: %d %d %d\n", conv1outputWidth, conv1outputHeight, conv1outputChannels);
+
+    // Copy the result back to host
+    cudaMemcpy(conv1h_output, conv1d_output_conv, conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Print the first image after convolution
+    counter = 0;
+    printf("First image after convolution\n");
+    for (int c = 0; c < conv1outputChannels; ++c) {
+        for (int i = 0; i < conv1outputHeight; ++i) {
+            for (int j = 0; j < conv1outputWidth; ++j) {
+                //std::cout << conv1h_output[(c * conv1outputHeight * conv1outputWidth) + (i * conv1outputWidth) + j] << " ";
+                counter++;
+            }
+           // std::cout << std::endl;
+        }
+        //std::cout << "Channel " << outputChannels << " complete" << std::endl;
+    }
+    printf("Total number of pixels after conv1: %d\n", counter);
+    
+
+    //Conv2
+	ConvolutionLayer conv2(conv1outputWidth, conv1outputHeight, conv1outputChannels, NUM_IMAGES);
+
+	//// Perform forward pass
+	float* conv2d_output = conv2.forward(conv1d_output_conv);
+
+	//// Allocate host memory for the output
+	int conv2outputWidth = conv2.getOutputWidth();
+	int conv2outputHeight = conv2.getOutputHeight();
+	int conv2outputChannels = conv2.getOutputChannels();
+	float* conv2h_output = (float*)malloc(conv2outputWidth * conv2outputHeight * conv2outputChannels * NUM_IMAGES * sizeof(float));
+	float* conv2h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv2outputChannels * sizeof(float));
+
+    printf("\nCONV 2 resutls");
+	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", conv2outputWidth, conv2outputHeight, conv2outputChannels);
+
+
 
     // Convert and display the first image
     //convertAndDisplayImage(h_images_float, h_labels_float);
 
-	float* conv_image, * conv_label, * conv_kernel;
-    ConvolutionResult conv_result = convolution(d_images_float, d_labels_float, 32, 32, NUM_IMAGES * DATA_BATCHES);
+    //ConvolutionLayer convLayer(32, 32, 3, NUM_IMAGES * DATA_BATCHES);
+    //convLayer.performConvolution(d_images_float);
 
-	
-	// TODO : COLLECT THE OUTPUT FROM CONVOLUTION
-    free(conv_result.output);
-    free(conv_result.kernel);
+    //float* output = convLayer.getOutput();
+
     // Free the allocated memory
-    cudaFree(d_images_float);
-    cudaFree(d_labels_float);
-    free(h_labels_float);
+    //free(output);
+    //cudaFree(d_images_float);
+    //cudaFree(d_labels_float);
+
+    //// Free the allocated memory
+    //cudaFree(d_images_float);
+    //cudaFree(d_labels_float);
+    //free(h_labels_float);
 
     return 0;
 }
 
-    
-	/*
 
-    float* d_images_gray_norm;
-    float* d_labels_float;
-    cudaMalloc(&d_images_gray_norm, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
-    cudaMalloc(&d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
+/*
 
-    preprocessImages(d_images, d_images_gray_norm, d_labels, d_labels_float);
-    verifyGrayscaleConversion(d_images_gray_norm, d_labels_float);
+float* d_images_gray_norm;
+float* d_labels_float;
+cudaMalloc(&d_images_gray_norm, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
+cudaMalloc(&d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
 
-	// Free memory on gpu
-	/*cudaFree(d_images); 
-	cudaFree(d_labels); 
+preprocessImages(d_images, d_images_gray_norm, d_labels, d_labels_float);
+verifyGrayscaleConversion(d_images_gray_norm, d_labels_float);
+
+// Free memory on gpu
+/*cudaFree(d_images);
+cudaFree(d_labels);
 
 
-    float* d_output;
-    cudaMalloc(&d_output, (IMG_WIDTH - 2) * (IMG_HEIGHT - 2) * NUM_IMAGES * DATA_BATCHES * sizeof(float));
-    perform_convolution(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
+float* d_output;
+cudaMalloc(&d_output, (IMG_WIDTH - 2) * (IMG_HEIGHT - 2) * NUM_IMAGES * DATA_BATCHES * sizeof(float));
+perform_convolution(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
 
-    // Verify grayscale conversion, normalization, and convolution
-    verify_grayscale_normalization(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
+// Verify grayscale conversion, normalization, and convolution
+verify_grayscale_normalization(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
 
-    // Clean up
-    cudaFree(d_output);
+// Clean up
+cudaFree(d_output);
 
-    */
+*/
