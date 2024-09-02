@@ -9,6 +9,10 @@
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+
+//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layers.cu>
+
 
 
 #define IMG_SIZE 32*32*3 // 32x32x3
@@ -110,8 +114,6 @@ int main() {
         std::cout << h_labels_float[i] << std::endl;
     }
 
-    
-    
     // print the first image
     int counter = 0;
     printf("First image before convolution\n");
@@ -123,45 +125,24 @@ int main() {
         std::cout << std::endl;
     }
     printf("Total number of pixels: %d\n", counter);
-    
 
-
-    //int counter = 0;
-    //printf("First image before convolution\n");
-    //for (int c = 0; c < 3; ++c) {  // Iterate through each channel
-    //    printf("Channel %d:\n", c);
-    //    for (int i = 0; i < 32; ++i) {  // Rows
-    //        for (int j = 0; j < 32; ++j) {  // Columns
-    //            int index = c * 32 * 32 + i * 32 + j;
-    //            printf("%.3f ", h_images_float[index]);
-    //            counter++;
-    //        }
-    //        printf("\n");  // New line after each row
-    //    }
-    //    printf("\n");  // Extra line between channels
-    //}
-    //printf("Total number of pixels: %d\n", counter);
-
-
-    // Create a convolution layer
+    //  CONVOLUTION
     int inputWidth = 32, inputHeight = 32, inputChannels = 3;
 
     ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
-
     // Perform forward pass
     float* conv1d_output_conv = conv1.forward(d_images_float);
 
     // Allocate host memory for the output
-    int conv1outputWidth = conv1.getOutputWidth();
+     int conv1outputWidth = conv1.getOutputWidth();
     int conv1outputHeight = conv1.getOutputHeight();
     int conv1outputChannels = conv1.getOutputChannels();
-    float* conv1h_output = (float*)malloc(conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float));
-	float* conv1h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv1outputChannels * sizeof(float));
-
-	printf("Output width: , Output height: , Output channels: %d %d %d\n", conv1outputWidth, conv1outputHeight, conv1outputChannels);
+    //float* conv1h_output = (float*)malloc(conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float));
+    /*float* conv1h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv1outputChannels * sizeof(float));*/
+    //printf("Output width: , Output height: , Output channels: %d %d %d\n", conv1outputWidth, conv1outputHeight, conv1outputChannels);
 
     // Copy the result back to host
-    cudaMemcpy(conv1h_output, conv1d_output_conv, conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(conv1h_output, conv1d_output_conv, conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Print the first image after convolution
     counter = 0;
@@ -172,70 +153,55 @@ int main() {
                 //std::cout << conv1h_output[(c * conv1outputHeight * conv1outputWidth) + (i * conv1outputWidth) + j] << " ";
                 counter++;
             }
-           // std::cout << std::endl;
+            // std::cout << std::endl;
         }
         //std::cout << "Channel " << outputChannels << " complete" << std::endl;
     }
     printf("Total number of pixels after conv1: %d\n", counter);
-    
 
 
-    // Create and use the MaxPoolingLayer
+    //MAX POOLING
     MaxPoolingLayer pool1(conv1.getOutputWidth(), conv1.getOutputHeight(), conv1.getOutputChannels(), NUM_IMAGES);
     float* d_pool_output = pool1.forward(conv1d_output_conv);
 
-    // Now d_pool_output contains the result of max pooling applied to the convolution output
-
-    // You can copy the result back to host if needed
     int poolOutputWidth = pool1.getOutputWidth();
     int poolOutputHeight = pool1.getOutputHeight();
     int poolOutputChannels = pool1.getOutputChannels();
     float* h_pool_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
-    
-	printf("\nPOOL 1 resutls");
-	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+    printf("\nPOOL 1 resutls");
+    printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
 
     //cudaMemcpy(h_pool_output, d_pool_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
 
+	// ACTIVATION
+	float* d_activated_output;
+	cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+	applyActivation(d_pool_output, d_activated_output, poolOutputWidth* poolOutputHeight* poolOutputChannels* NUM_IMAGES, "relu");
+
+
+	//// Copy the result back to host
+	//float* h_activated_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+	//printf("\nACTIVATION results");
+	//cudaMemcpy(h_activated_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
+
+	//// Print the first image after convolution
+	//counter = 0;
+	//printf("\n\nFirst image after activation\n");
+ //   for (int c = 0; c < poolOutputChannels; ++c) {
+ //       for (int i = 0; i < poolOutputHeight; ++i) {
+ //           for (int j = 0; j < poolOutputWidth; ++j) {
+ //               std::cout << h_activated_output[(c * poolOutputHeight * poolOutputWidth) + (i * poolOutputWidth) + j] << " ";
+ //               counter++;
+ //           }
+ //           std::cout << std::endl;
+ //       }
+ //   }
 
 
 
-    /*
-    //Conv2
-	ConvolutionLayer conv2(conv1outputWidth, conv1outputHeight, conv1outputChannels, NUM_IMAGES);
-
-	//// Perform forward pass
-	float* conv2d_output = conv2.forward(conv1d_output_conv);
-
-	//// Allocate host memory for the output
-	int conv2outputWidth = conv2.getOutputWidth();
-	int conv2outputHeight = conv2.getOutputHeight();
-	int conv2outputChannels = conv2.getOutputChannels();
-	float* conv2h_output = (float*)malloc(conv2outputWidth * conv2outputHeight * conv2outputChannels * NUM_IMAGES * sizeof(float));
-	float* conv2h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv2outputChannels * sizeof(float));
-
-    printf("\nCONV 2 resutls");
-	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", conv2outputWidth, conv2outputHeight, conv2outputChannels);
-    */
 
 
-    // Convert and display the first image
-    //convertAndDisplayImage(h_images_float, h_labels_float);
-
-    //ConvolutionLayer convLayer(32, 32, 3, NUM_IMAGES * DATA_BATCHES);
-    //convLayer.performConvolution(d_images_float);
-
-    //float* output = convLayer.getOutput();
-
-    // Free the allocated memory
-    //free(output);
-    //cudaFree(d_images_float);
-    //cudaFree(d_labels_float);
-
-    //// Free the allocated memory
-    //cudaFree(d_images_float);
-    //cudaFree(d_labels_float);
-    //free(h_labels_float);
 
     return 0;
 }
