@@ -3,16 +3,12 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
-
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\load_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\preprocess_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
-
-//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layers.cu>
-
 
 
 #define IMG_SIZE 32*32*3 // 32x32x3
@@ -178,7 +174,7 @@ int main() {
 	float* d_activated_output;
 	cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
 	applyActivation(d_pool_output, d_activated_output, poolOutputWidth* poolOutputHeight* poolOutputChannels* NUM_IMAGES, "relu");
-
+     
 
 	//// Copy the result back to host
 	//float* h_activated_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
@@ -197,6 +193,7 @@ int main() {
  //           std::cout << std::endl;
  //       }
  //   }
+
 
 
 
