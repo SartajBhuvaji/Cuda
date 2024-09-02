@@ -13,15 +13,6 @@
 #define DATA_BATCHES 5   // Total number of data batches
 #define FILTER_SIZE 3
 
-// Struct to hold convolution results
-struct ConvolutionResult {
-    float* output;
-    float* kernel;
-    int outputWidth;
-    int outputHeight;
-    int outputChannels;
-};
-
 // Updated to return a 1D array for easier usage with CUDA
 float* initialize_kernel(int n, const std::string& initializer) {
     std::srand(static_cast<unsigned>(std::time(0)));
@@ -108,32 +99,44 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
 //  //  printf("Total output elements: %d\n", actualOutputSizeexpectedOutputSize); //?
 //}
 
-ConvolutionResult convolution(float* d_images_float, float* d_labels_float, int inputWidth, int inputHeight, int numImages) {
+// Struct to hold convolution results
+struct ConvolutionResult {
+    float* output;
+    float* kernel;
+    int outputWidth;
+    int outputHeight;
+    int outputChannels;
+};
+
+
+// Need to work on passing filter to this function as filter values would change during backprop
+ConvolutionResult convolution(float* d_images_float, float* d_labels_float, int inputWidth, int inputHeight, int numImages, float* conv_image,
+    float* conv_label, float* conv_kernel) {
     printf("IN CONVOLUTION\n");
     int channels = 3;
     int outputWidth = inputWidth - FILTER_SIZE + 1;
     int outputHeight = inputHeight - FILTER_SIZE + 1;
 
-    // Allocate device memory for output
-    float* d_output;
-    cudaMalloc(&d_output, outputWidth * outputHeight * channels * numImages * sizeof(float));
+    //float* d_output;
+    cudaMalloc(&conv_image, outputWidth * outputHeight * channels * numImages * sizeof(float));
 
-    // Create and initialize the filter using the initialize_kernel function
+    // Create and initialize the filter using the updated initialize_kernel function
     float* h_filter = initialize_kernel(FILTER_SIZE, "Xavier"); // or "He"
 
-    // Allocate device memory for filter and copy it to device
+    // Copy the filter to the device
     float* d_filter;
     cudaMalloc(&d_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float));
     cudaMemcpy(d_filter, h_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 blockDim(16, 16);
+    dim3 blockDim(16, 16); // 
     dim3 gridDim(
         (outputWidth + blockDim.x - 1) / blockDim.x,
         (outputHeight + blockDim.y - 1) / blockDim.y,
         numImages
-    );
+	); // 3D grid for multiple images // https://forums.developer.nvidia.com/t/3d-grids/10427
+    // https://forums.developer.nvidia.com/t/cuda-tiling-in-3d-grids-and-3d-blocks-with-shared-memory/201254
 
-    convolutionKernel << <gridDim, blockDim >> > (d_images_float, d_output, inputWidth, inputHeight, outputWidth, outputHeight, channels, d_filter);
+    convolutionKernel << <gridDim, blockDim >> > (d_images_float, conv_image, inputWidth, inputHeight, outputWidth, outputHeight, channels, d_filter);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -143,33 +146,39 @@ ConvolutionResult convolution(float* d_images_float, float* d_labels_float, int 
     cudaDeviceSynchronize();
     printf("Convolution done\n");
 
-    // Allocate host memory for output and copy result from device to host
     float* h_output = (float*)malloc(outputWidth * outputHeight * channels * numImages * sizeof(float));
-    cudaMemcpy(h_output, d_output, outputWidth * outputHeight * channels * numImages * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_output, conv_image, outputWidth * outputHeight * channels * numImages * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // Print first few elements of the output (for debugging)
-    printf("First few elements of convolution output:\n");
+    // Validate the convolution output
+    //validateConvolutionOutput(d_images_float, inputWidth, inputHeight, channels,
+      //  h_output, FILTER_SIZE);
+
+
+    // print image after convolution
     int counter = 0;
-    for (int i = 0; i < 1; i++) {
-        for (int j = 0; j < IMG_SIZE; j++) {
-            std::cout << h_output[j + i * IMG_SIZE] << " ";
-            counter++;
-        }
-        std::cout << std::endl;
+    printf("First image after convolution\n");
+    for (int i = 0; i < outputWidth * outputHeight * channels; i++) {
+        std::cout << h_output[i] << " ";
+        counter++;
     }
-	printf("Total number of pixels: %d\n", counter);
+    std::cout << std::endl;
+
+    printf("Total number of output elements after convolution: %d\n", counter);
     printf("Output dimensions: %d x %d x %d\n", outputWidth, outputHeight, channels);
-
-    // Free device memory
-    cudaFree(d_output);
-
-    // Prepare and return the result
+     
     ConvolutionResult result;
-    result.output = h_output;
-    result.kernel = h_filter;
+    result.output = conv_image;
+    result.kernel = d_filter;
     result.outputWidth = outputWidth;
     result.outputHeight = outputHeight;
     result.outputChannels = channels;
 
+    //// Free memory
+    //free(h_output);
+    //free(h_filter);
+    //cudaFree(conv_image);
+    //cudaFree(d_filter);
+
     return result;
+
 }
