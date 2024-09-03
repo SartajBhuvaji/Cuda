@@ -56,25 +56,57 @@ __global__ void seluKernel(float* input, float* output, int size) {
 }
 
 // Softmax activation function (for the last layer of classification networks)
+//__global__ void softmaxKernel(float* input, float* output, int size, int classes) {
+//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//    if (idx < size) {
+//        int start = (idx / classes) * classes;
+//        int end = start + classes;
+//
+//        float max_val = input[start];
+//        for (int i = start + 1; i < end; ++i) {
+//            max_val = fmaxf(max_val, input[i]);
+//        }
+//
+//        float sum = 0.0f;
+//        for (int i = start; i < end; ++i) {
+//            sum += expf(input[i] - max_val);
+//        }
+//
+//        output[idx] = expf(input[idx] - max_val) / sum;
+//    }
+//}
 __global__ void softmaxKernel(float* input, float* output, int size, int classes) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         int start = (idx / classes) * classes;
         int end = start + classes;
 
+        // Find max value
         float max_val = input[start];
         for (int i = start + 1; i < end; ++i) {
             max_val = fmaxf(max_val, input[i]);
         }
 
+        // Compute exp and sum
         float sum = 0.0f;
         for (int i = start; i < end; ++i) {
-            sum += expf(input[i] - max_val);
+            float exp_val = expf(input[i] - max_val);
+            sum += exp_val;
+            output[i] = exp_val;  // Store intermediate result
         }
 
-        output[idx] = expf(input[idx] - max_val) / sum;
+        // Normalize
+        for (int i = start; i < end; ++i) {
+            output[i] /= sum;
+        }
+
+        // Debugging: Print values for the first few elements
+        if (idx < 10) {
+            printf("Input[%d]: %f, Output[%d]: %f\n", idx, input[idx], idx, output[idx]);
+        }
     }
 }
+
 
 // Wrapper function to launch activation kernels
 void applyActivation(float* input, float* output, int size, const char* activationType, int classes = 1) {

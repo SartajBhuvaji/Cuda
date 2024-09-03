@@ -40,7 +40,7 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
                 }
             }
             int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
-            output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation
+			output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation // NEED TO FIX THIS
         }
     }
 }

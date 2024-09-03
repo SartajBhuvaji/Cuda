@@ -9,6 +9,7 @@
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
 //#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
 //#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layer.cu>
 
 
 #define IMG_SIZE 32*32*3 // 32x32x3
@@ -141,6 +142,16 @@ int main() {
 
 	printf("\nPOOL 1 resutls - external");
 	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+    //DENSE LAYER
+	runNeuralNetwork(conv_pass, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, 64, 5, 10);
+
+
+
+
+
+
+
 
     //float* conv1h_output = (float*)malloc(conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float));
     /*float* conv1h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv1outputChannels * sizeof(float));*/
