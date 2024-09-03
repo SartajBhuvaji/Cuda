@@ -159,12 +159,19 @@ public:
 
     void updateFilters(float* gradients, float learningRate) {
         // This is a placeholder for the actual update logic
-        // In a real implementation, you'd apply the gradients to update the filters
+        // you'd apply the gradients to update the filters
         
         // cudaMemcpy(h_filters, d_filters, filterSize, cudaMemcpyDeviceToHost);
         // Update h_filters using gradients and learning rate
         // cudaMemcpy(d_filters, h_filters, filterSize, cudaMemcpyHostToDevice);
     }
+
+	void backprop(float* gradients) {
+		// This is a placeholder for the actual backpropagation logic
+		//  you'd calculate the gradients and backpropagate them
+		
+        //updateFilters();
+	}
 
     // Getter methods
     int getOutputWidth() const { return outputWidth; }
@@ -174,6 +181,8 @@ public:
 	int getPoolOutputWidth() const { return poolOutputWidth; }
 	int getPoolOutputHeight() const { return poolOutputHeight; }
 	int getPoolOutputChannels() const { return poolOutputChannels; }
+
+	float* getFilters() const { return d_filters; }
 
 };
 
