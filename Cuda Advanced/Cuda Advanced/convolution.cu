@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <ctime>
 
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+
 #define FILTER_SIZE 3
 
 
@@ -62,6 +65,7 @@ class ConvolutionLayer {
 private:
     int inputWidth, inputHeight, inputChannels;
     int outputWidth, outputHeight, outputChannels;
+	int poolOutputWidth, poolOutputHeight, poolOutputChannels;
     int numImages;
     float* d_filters;  // Device memory for filters
     float* d_output;   // Device memory for output
@@ -131,7 +135,26 @@ public:
             outputWidth, outputHeight, inputChannels, d_filters);
 
         cudaDeviceSynchronize();
-        return d_output;
+        //return d_output;
+
+		// perform maax pooling
+        MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), NUM_IMAGES);
+        float* d_pool_output = pool1.forward(d_output);
+
+        poolOutputWidth = pool1.getOutputWidth();
+        poolOutputHeight = pool1.getOutputHeight();
+        poolOutputChannels = pool1.getOutputChannels();
+
+        printf("\nPOOL 1 resutls - internal");
+        printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+		// perform ReLU activation
+        float* d_activated_output = nullptr;
+        cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+        applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, "relu");
+
+		return d_activated_output;
+        
     }
 
     void updateFilters(float* gradients, float learningRate) {
@@ -147,6 +170,11 @@ public:
     int getOutputWidth() const { return outputWidth; }
     int getOutputHeight() const { return outputHeight; }
     int getOutputChannels() const { return outputChannels; }
+
+	int getPoolOutputWidth() const { return poolOutputWidth; }
+	int getPoolOutputHeight() const { return poolOutputHeight; }
+	int getPoolOutputChannels() const { return poolOutputChannels; }
+
 };
 
 //// Usage example

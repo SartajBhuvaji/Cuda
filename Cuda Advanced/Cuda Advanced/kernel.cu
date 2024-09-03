@@ -7,8 +7,8 @@
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\preprocess_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
+//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
 
 
 #define IMG_SIZE 32*32*3 // 32x32x3
@@ -127,12 +127,21 @@ int main() {
 
     ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
     // Perform forward pass
-    float* conv1d_output_conv = conv1.forward(d_images_float);
+    float* conv_pass = conv1.forward(d_images_float);
 
     // Allocate host memory for the output
-     int conv1outputWidth = conv1.getOutputWidth();
+    /*int conv1outputWidth = conv1.getOutputWidth();
     int conv1outputHeight = conv1.getOutputHeight();
-    int conv1outputChannels = conv1.getOutputChannels();
+    int conv1outputChannels = conv1.getOutputChannels();*/
+
+
+	int poolOutputWidth = conv1.getPoolOutputWidth();
+	int poolOutputHeight = conv1.getPoolOutputHeight();
+    int poolOutputChannels = conv1.getPoolOutputChannels();
+
+	printf("\nPOOL 1 resutls - external");
+	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
     //float* conv1h_output = (float*)malloc(conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float));
     /*float* conv1h_conv_filter = (float*)malloc(FILTER_SIZE * FILTER_SIZE * inputChannels * conv1outputChannels * sizeof(float));*/
     //printf("Output width: , Output height: , Output channels: %d %d %d\n", conv1outputWidth, conv1outputHeight, conv1outputChannels);
@@ -141,40 +150,40 @@ int main() {
     // cudaMemcpy(conv1h_output, conv1d_output_conv, conv1outputWidth * conv1outputHeight * conv1outputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Print the first image after convolution
-    counter = 0;
-    printf("First image after convolution\n");
-    for (int c = 0; c < conv1outputChannels; ++c) {
-        for (int i = 0; i < conv1outputHeight; ++i) {
-            for (int j = 0; j < conv1outputWidth; ++j) {
-                //std::cout << conv1h_output[(c * conv1outputHeight * conv1outputWidth) + (i * conv1outputWidth) + j] << " ";
-                counter++;
-            }
-            // std::cout << std::endl;
-        }
-        //std::cout << "Channel " << outputChannels << " complete" << std::endl;
-    }
-    printf("Total number of pixels after conv1: %d\n", counter);
+    //counter = 0;
+    //printf("First image after convolution\n");
+    //for (int c = 0; c < conv1outputChannels; ++c) {
+    //    for (int i = 0; i < conv1outputHeight; ++i) {
+    //        for (int j = 0; j < conv1outputWidth; ++j) {
+    //            //std::cout << conv1h_output[(c * conv1outputHeight * conv1outputWidth) + (i * conv1outputWidth) + j] << " ";
+    //            counter++;
+    //        }
+    //        // std::cout << std::endl;
+    //    }
+    //    //std::cout << "Channel " << outputChannels << " complete" << std::endl;
+    //}
+    //printf("Total number of pixels after conv1: %d\n", counter);
 
 
     //MAX POOLING
-    MaxPoolingLayer pool1(conv1.getOutputWidth(), conv1.getOutputHeight(), conv1.getOutputChannels(), NUM_IMAGES);
-    float* d_pool_output = pool1.forward(conv1d_output_conv);
+    //MaxPoolingLayer pool1(conv1.getOutputWidth(), conv1.getOutputHeight(), conv1.getOutputChannels(), NUM_IMAGES);
+    //float* d_pool_output = pool1.forward(conv1d_output_conv);
 
-    int poolOutputWidth = pool1.getOutputWidth();
-    int poolOutputHeight = pool1.getOutputHeight();
-    int poolOutputChannels = pool1.getOutputChannels();
-    float* h_pool_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+    //int poolOutputWidth = pool1.getOutputWidth();
+    //int poolOutputHeight = pool1.getOutputHeight();
+    //int poolOutputChannels = pool1.getOutputChannels();
+    //float* h_pool_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
 
-    printf("\nPOOL 1 resutls");
-    printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+    //printf("\nPOOL 1 resutls");
+    //printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
 
     //cudaMemcpy(h_pool_output, d_pool_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
 
 	// ACTIVATION
-	float* d_activated_output;
+	/*float* d_activated_output;
 	cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
 	applyActivation(d_pool_output, d_activated_output, poolOutputWidth* poolOutputHeight* poolOutputChannels* NUM_IMAGES, "relu");
-     
+     */
 
 	//// Copy the result back to host
 	//float* h_activated_output = (float*)malloc(poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
