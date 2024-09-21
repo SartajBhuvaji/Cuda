@@ -4,13 +4,7 @@
 #include <device_launch_parameters.h>
 #include <cmath>
 
-// ReLU (Rectified Linear Unit) activation function
-__global__ void reluKernel(float* input, float* output, int size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
-        output[idx] = fmaxf(input[idx], 0.0f);
-    }
-}
+
 
 // Leaky ReLU activation function
 __global__ void leakyReluKernel(float* input, float* output, int size, float alpha = 0.01f) {
@@ -75,13 +69,30 @@ __global__ void seluKernel(float* input, float* output, int size) {
 //        output[idx] = expf(input[idx] - max_val) / sum;
 //    }
 //}
-__global__ void softmaxKernel(float* input, float* output, int size, int classes) {
+
+// ReLU (Rectified Linear Unit) activation function
+__global__ void reluKernel(float* input, float* output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        int start = (idx / classes) * classes;
+        output[idx] = fmaxf(input[idx], 0.0f);
+
+        // Debugging
+        if (idx < 10) {
+            printf("ReLU: Input[%d] = %f, Output[%d] = %f\n", idx, input[idx], idx, output[idx]);
+        }
+    }
+}
+
+// Softmax activation function (for the last layer of classification networks)
+__global__ void softmaxKernel(float* input, float* output, int size, int classes) {
+    int batchIdx = blockIdx.x;
+    int classIdx = threadIdx.x;
+
+    if (classIdx < classes) {
+        int start = batchIdx * classes;
         int end = start + classes;
 
-        // Find max value
+        // Find max value for numerical stability
         float max_val = input[start];
         for (int i = start + 1; i < end; ++i) {
             max_val = fmaxf(max_val, input[i]);
@@ -89,27 +100,29 @@ __global__ void softmaxKernel(float* input, float* output, int size, int classes
 
         // Compute exp and sum
         float sum = 0.0f;
-        for (int i = start; i < end; ++i) {
-            float exp_val = expf(input[i] - max_val);
-            sum += exp_val;
-            output[i] = exp_val;  // Store intermediate result
+        float exp_vals[64];  // Assuming max 64 classes, adjust if needed
+
+        for (int i = 0; i < classes; ++i) {
+            exp_vals[i] = expf(input[start + i] - max_val);
+            sum += exp_vals[i];
         }
 
         // Normalize
-        for (int i = start; i < end; ++i) {
-            output[i] /= sum;
-        }
+        output[start + classIdx] = exp_vals[classIdx] / sum;
 
-        // Debugging: Print values for the first few elements
-        if (idx < 10) {
-            printf("Input[%d]: %f, Output[%d]: %f\n", idx, input[idx], idx, output[idx]);
+        // Debugging
+        if (batchIdx == 0 && classIdx < 10) {
+            printf("Softmax: Input[%d] = %f, Output[%d] = %f\n",
+                start + classIdx, input[start + classIdx],
+                start + classIdx, output[start + classIdx]);
         }
     }
 }
 
 
+
 // Wrapper function to launch activation kernels
-void applyActivation(float* input, float* output, int size, const char* activationType, int classes = 1) {
+void applyActivation(float* input, float* output, int size, const char* activationType, int classes = 10) {
     int blockSize = 256;
     int numBlocks = (size + blockSize - 1) / blockSize;
 

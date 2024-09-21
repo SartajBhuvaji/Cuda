@@ -72,40 +72,97 @@ int main() {
     
     // print the first 10 labels
 
-    // print the first image
-    int counter = 0;
-    printf("First image before convolution\n");
-    for (int i = 0; i < 1; i++) {
-        for (int j = 0; j < IMG_SIZE; j++) {
-            std::cout << h_images_float[j + i * IMG_SIZE] << " ";
-            counter++;
-        }
-        std::cout << std::endl;
-    }
-    printf("Total number of pixels: %d\n", counter);
 
-    //  CONVOLUTION
+    // Define batch size
+    const int BATCH_SIZE = 100; // Adjust this value based on your GPU memory
+    const int NUM_BATCHES = NUM_IMAGES * DATA_BATCHES / BATCH_SIZE;
+
+    // Create a convolution layer
     int inputWidth = 32, inputHeight = 32, inputChannels = 3;
+    ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, BATCH_SIZE);
 
-    ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
-    // Perform forward pass
-    float* conv_pass = conv1.forward(d_images_float);
+    // Create dense layers
+    int convOutputSize = conv1.getPoolOutputWidth() * conv1.getPoolOutputHeight() * conv1.getPoolOutputChannels();
+    int hiddenSize = 64;
+    int numLayers = 3; // 1 input layer, 1 hidden layer, 1 output layer
+    int outputSize = 10; // Assuming 10 classes for classification
 
-    // Allocate host memory for the output
-    /*int conv1outputWidth = conv1.getOutputWidth();
-    int conv1outputHeight = conv1.getOutputHeight();
-    int conv1outputChannels = conv1.getOutputChannels();*/
+    std::vector<DenseLayer*> denseLayers;
+    denseLayers.push_back(new DenseLayer(convOutputSize, hiddenSize, BATCH_SIZE, "softmax"));
+    //denseLayers.push_back(new DenseLayer(hiddenSize, hiddenSize, BATCH_SIZE, "relu"));
+    //denseLayers.push_back(new DenseLayer(hiddenSize, outputSize, BATCH_SIZE, "softmax"));
+
+    //NUM_BATCHES
+    for (int batch = 0; batch < 2; ++batch) {
+        // Calculate the offset for the current batch
+        size_t batchOffset = batch * BATCH_SIZE * IMG_SIZE;
+
+        // Pointer to the current batch of images
+        float* d_batch_images = d_images_float + batchOffset;
+
+        // Perform forward pass for the current batch through convolution layer
+        float* conv_output = conv1.forward(d_batch_images);
+
+        printf("\nBatch %d - CONV 1 results:", batch);
+        printf("\nOutput width: %d, Output height: %d, Output channels: %d\n",
+            conv1.getPoolOutputWidth(), conv1.getPoolOutputHeight(), conv1.getPoolOutputChannels());
+
+        // Forward pass through dense layers
+        float* denseInput = conv_output;
+        for (int i = 0; i < denseLayers.size(); ++i) {
+            denseInput = denseLayers[i]->forward(denseInput);
+            printf("Dense Layer %d output (first few values of first batch):\n", i);
+            float h_output[10];
+            cudaMemcpy(h_output, denseInput, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+            for (int j = 0; j < 10; ++j) {
+                printf("%f ", h_output[j]);
+            }
+            printf("\n");
+        }
+
+        // The final output is now in denseInput
+        // TODO: Implement loss calculation and backpropagation
+
+        // Free the memory allocated for conv_output if it's no longer needed
+        cudaFree(conv_output);
+    }
 
 
-	int poolOutputWidth = conv1.getPoolOutputWidth();
-	int poolOutputHeight = conv1.getPoolOutputHeight();
-    int poolOutputChannels = conv1.getPoolOutputChannels();
 
-	printf("\nPOOL 1 resutls - external");
-	printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+ //   // print the first image
+ //   int counter = 0;
+ //   printf("First image before convolution\n");
+ //   for (int i = 0; i < 1; i++) {
+ //       for (int j = 0; j < IMG_SIZE; j++) {
+ //           std::cout << h_images_float[j + i * IMG_SIZE] << " ";
+ //           counter++;
+ //       }
+ //       std::cout << std::endl;
+ //   }
+ //   printf("Total number of pixels: %d\n", counter);
 
-    //DENSE LAYER
-	runNeuralNetwork(conv_pass, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, 64, 5, 10);
+ //   //  CONVOLUTION
+ //   int inputWidth = 32, inputHeight = 32, inputChannels = 3;
+
+ //   ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
+ //   // Perform forward pass
+ //   float* conv_pass = conv1.forward(d_images_float);
+
+ //   // Allocate host memory for the output
+ //   /*int conv1outputWidth = conv1.getOutputWidth();
+ //   int conv1outputHeight = conv1.getOutputHeight();
+ //   int conv1outputChannels = conv1.getOutputChannels();*/
+
+
+	//int poolOutputWidth = conv1.getPoolOutputWidth();
+	//int poolOutputHeight = conv1.getPoolOutputHeight();
+ //   int poolOutputChannels = conv1.getPoolOutputChannels();
+
+	//printf("\nPOOL 1 resutls - external");
+	//printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+ //   //DENSE LAYER
+	//runNeuralNetwork(conv_pass, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, 64, 5, 10);
 
 
 

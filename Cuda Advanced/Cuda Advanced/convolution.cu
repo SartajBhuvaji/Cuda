@@ -14,18 +14,41 @@
 
 
 // CUDA kernel for convolution
+//__global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter) {
+//    int x = blockIdx.x * blockDim.x + threadIdx.x;
+//    int y = blockIdx.y * blockDim.y + threadIdx.y;
+//    int z = blockIdx.z; // for multiple images
+//
+//    __shared__ float sharedFilter[FILTER_SIZE * FILTER_SIZE];
+//
+//    // Load filter into shared memory
+//    if (threadIdx.x < FILTER_SIZE && threadIdx.y < FILTER_SIZE) {
+//        sharedFilter[threadIdx.y * FILTER_SIZE + threadIdx.x] = filter[threadIdx.y * FILTER_SIZE + threadIdx.x];
+//    }
+//    __syncthreads(); // Wait for all threads to load the filter
+//
+//    if (x < outputWidth && y < outputHeight) {
+//        for (int c = 0; c < channels; ++c) {
+//            float sum = 0.0f;
+//            for (int fy = 0; fy < FILTER_SIZE; ++fy) {
+//                for (int fx = 0; fx < FILTER_SIZE; ++fx) {
+//                    int imgX = x + fx;
+//                    int imgY = y + fy;
+//
+//                    int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c;
+//                    sum += input[inputIndex] * sharedFilter[fy * FILTER_SIZE + fx];
+//                }
+//            }
+//            int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
+//			output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation // NEED TO FIX THIS
+//        }
+//    }
+//}
+
 __global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
     int z = blockIdx.z; // for multiple images
-
-    __shared__ float sharedFilter[FILTER_SIZE * FILTER_SIZE];
-
-    // Load filter into shared memory
-    if (threadIdx.x < FILTER_SIZE && threadIdx.y < FILTER_SIZE) {
-        sharedFilter[threadIdx.y * FILTER_SIZE + threadIdx.x] = filter[threadIdx.y * FILTER_SIZE + threadIdx.x];
-    }
-    __syncthreads(); // Wait for all threads to load the filter
 
     if (x < outputWidth && y < outputHeight) {
         for (int c = 0; c < channels; ++c) {
@@ -36,14 +59,28 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
                     int imgY = y + fy;
 
                     int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c;
-                    sum += input[inputIndex] * sharedFilter[fy * FILTER_SIZE + fx];
+                    int filterIndex = (fy * FILTER_SIZE + fx) * channels + c;
+                    sum += input[inputIndex] * filter[filterIndex];
+
+                    // Debugging: Print intermediate values
+                    if (x == 0 && y == 0 && z == 0 && c == 0) {
+                        printf("Conv: input[%d] = %f, filter[%d] = %f, product = %f\n",
+                            inputIndex, input[inputIndex], filterIndex, filter[filterIndex],
+                            input[inputIndex] * filter[filterIndex]);
+                    }
                 }
             }
             int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
-			output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation // NEED TO FIX THIS
+            output[outIndex] = sum;
+
+            // Debugging: Print final sum
+            if (x == 0 && y == 0 && z == 0 && c == 0) {
+                printf("Conv: Final sum for output[%d] = %f\n", outIndex, sum);
+            }
         }
     }
 }
+
 
 __global__ void initializeFiltersKernel(float* filters, int inputChannels, int outputChannels, unsigned long long seed) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -65,24 +102,24 @@ class ConvolutionLayer {
 private:
     int inputWidth, inputHeight, inputChannels;
     int outputWidth, outputHeight, outputChannels;
-	int poolOutputWidth, poolOutputHeight, poolOutputChannels;
-    int numImages;
+    int poolOutputWidth, poolOutputHeight, poolOutputChannels;
+    int batchSize;
     float* d_filters;  // Device memory for filters
     float* d_output;   // Device memory for output
 
 public:
-    ConvolutionLayer(int inWidth, int inHeight, int inChannels, int numImages)
-        : inputWidth(inWidth), inputHeight(inHeight), inputChannels(inChannels), numImages(numImages) {
+    ConvolutionLayer(int inWidth, int inHeight, int inChannels, int batchSize)
+        : inputWidth(inWidth), inputHeight(inHeight), inputChannels(inChannels), batchSize(batchSize) {
         outputWidth = inputWidth - FILTER_SIZE + 1;
         outputHeight = inputHeight - FILTER_SIZE + 1;
         outputChannels = inputChannels; // Preserve the number of channels
 
         // Allocate and initialize filters
-        cudaMalloc(&d_filters, FILTER_SIZE * FILTER_SIZE * inputChannels * sizeof(float));
+        cudaMalloc(&d_filters, FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels * sizeof(float));
         initializeFilters();
 
         // Allocate memory for output
-        cudaMalloc(&d_output, outputWidth * outputHeight * outputChannels * numImages * sizeof(float));
+        cudaMalloc(&d_output, outputWidth * outputHeight * outputChannels * batchSize * sizeof(float));
     }
 
     ~ConvolutionLayer() {
@@ -128,33 +165,36 @@ public:
         dim3 gridDim(
             (outputWidth + blockDim.x - 1) / blockDim.x,
             (outputHeight + blockDim.y - 1) / blockDim.y,
-            numImages
+            batchSize
         );
 
         convolutionKernel << <gridDim, blockDim >> > (d_input, d_output, inputWidth, inputHeight,
             outputWidth, outputHeight, inputChannels, d_filters);
 
         cudaDeviceSynchronize();
-        //return d_output;
 
-		// perform maax pooling
-        MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), NUM_IMAGES);
+        //float h_output[10];
+        //cudaMemcpy(h_output, d_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+        //printf("Convolution output (first 10 values):\n");
+        //for (int i = 0; i < 10; ++i) {
+        //    printf("%f ", h_output[i]);
+        //}
+        //printf("\n");
+
+        // Perform max pooling
+        MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), batchSize);
         float* d_pool_output = pool1.forward(d_output);
 
         poolOutputWidth = pool1.getOutputWidth();
         poolOutputHeight = pool1.getOutputHeight();
         poolOutputChannels = pool1.getOutputChannels();
 
-        printf("\nPOOL 1 resutls - internal");
-        printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
-
-		// perform ReLU activation
+        // Perform ReLU activation
         float* d_activated_output = nullptr;
-        cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
-        applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, "relu");
+        cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize * sizeof(float));
+        applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize, "relu");
 
-		return d_activated_output;
-        
+        return d_activated_output;
     }
 
     void updateFilters(float* gradients, float learningRate) {
@@ -183,8 +223,10 @@ public:
 	int getPoolOutputChannels() const { return poolOutputChannels; }
 
 	float* getFilters() const { return d_filters; }
+    int getBatchSize() const { return batchSize; }
 
 };
+
 
 //// Usage example
 //int main() {

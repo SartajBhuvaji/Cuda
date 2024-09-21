@@ -36,26 +36,27 @@ __global__ void initializeWeightsKernel(float* weights, float* bias, int inputSi
 
 
 __global__ void forwardKernel(const float* input, const float* weights, const float* bias,
-    float* output, int inputSize, int outputSize) {
+    float* output, int inputSize, int outputSize, int batchSize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < outputSize) {
+    int batch = blockIdx.y;
+    if (idx < outputSize && batch < batchSize) {
         float sum = 0.0f;
         for (int i = 0; i < inputSize; ++i) {
-            sum += input[i] * weights[i * outputSize + idx];
+            sum += input[batch * inputSize + i] * weights[i * outputSize + idx];
         }
-        output[idx] = sum + bias[idx];
+        output[batch * outputSize + idx] = sum + bias[idx];
     }
 }
-
 
 class DenseLayer {
 private:
     int inputSize;
     int outputSize;
+    int batchSize;
     float* d_weights;
     float* d_bias;
     float* d_output;
-    float* d_input;  // Store input for backpropagation
+    float* d_input;
     const char* activationType;
 
     void initializeWeightsAndBiases() {
@@ -66,12 +67,12 @@ private:
     }
 
 public:
-    DenseLayer(int inSize, int outSize, const char* actType)
-        : inputSize(inSize), outputSize(outSize), activationType(actType) {
+    DenseLayer(int inSize, int outSize, int bSize, const char* actType)
+        : inputSize(inSize), outputSize(outSize), batchSize(bSize), activationType(actType) {
         cudaMalloc(&d_weights, inputSize * outputSize * sizeof(float));
         cudaMalloc(&d_bias, outputSize * sizeof(float));
-        cudaMalloc(&d_output, outputSize * sizeof(float));
-        cudaMalloc(&d_input, inputSize * sizeof(float));
+        cudaMalloc(&d_output, outputSize * batchSize * sizeof(float));
+        cudaMalloc(&d_input, inputSize * batchSize * sizeof(float));
         initializeWeightsAndBiases();
     }
 
@@ -83,38 +84,42 @@ public:
     }
 
     float* forward(const float* input) {
-        cudaMemcpy(d_input, input, inputSize * sizeof(float), cudaMemcpyDeviceToDevice);
-        int blockSize = 256;
-        int numBlocks = (outputSize + blockSize - 1) / blockSize;
-        forwardKernel << <numBlocks, blockSize >> > (input, d_weights, d_bias, d_output, inputSize, outputSize);
-		cudaDeviceSynchronize();
+        float h_input[10];
+        cudaMemcpy(h_input, input, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+        printf("Dense layer input (first 10 values):\n");
+        for (int i = 0; i < 10; ++i) {
+            printf("%f ", h_input[i]);
+        }
+        printf("\n");
 
+        cudaMemcpy(d_input, input, inputSize * batchSize * sizeof(float), cudaMemcpyDeviceToDevice);
 
-        // Apply activation function
+        dim3 blockDim(256);
+        dim3 gridDim((outputSize + blockDim.x - 1) / blockDim.x, batchSize);
+
+        forwardKernel << <gridDim, blockDim >> > (input, d_weights, d_bias, d_output, inputSize, outputSize, batchSize);
+        cudaDeviceSynchronize();
+
         // Apply activation function
         float* d_activated_output;
-        cudaMalloc(&d_activated_output, outputSize * sizeof(float));
+        cudaMalloc(&d_activated_output, outputSize * batchSize * sizeof(float));
 
-        if (strcmp(activationType, "softmax") == 0) {
-            softmaxKernel << <numBlocks, blockSize >> > (d_output, d_activated_output, outputSize, outputSize);
-        }
-        else {
-            applyActivation(d_output, d_activated_output, outputSize, activationType);
-        }
+        applyActivation(d_output, d_activated_output, outputSize * batchSize, activationType);
+        
 
-        // Debugging: Print some values from d_output and d_activated_output
+        // Debugging: Print some values from d_output and d_activated_output for the first batch
         float h_output[10];
         float h_activated_output[10];
         cudaMemcpy(h_output, d_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(h_activated_output, d_activated_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
 
-        std::cout << "Before activation:" << std::endl;
+        std::cout << "Before activation (first batch):" << std::endl;
         for (int i = 0; i < 10; ++i) {
             std::cout << h_output[i] << " ";
         }
         std::cout << std::endl;
 
-        std::cout << "After activation:" << std::endl;
+        std::cout << "After activation (first batch):" << std::endl;
         for (int i = 0; i < 10; ++i) {
             std::cout << h_activated_output[i] << " ";
         }
@@ -132,43 +137,44 @@ public:
     }
 
     int getOutputSize() const { return outputSize; }
+    int getBatchSize() const { return batchSize; }
     float* getWeights() const { return d_weights; }
     float* getBias() const { return d_bias; }
 };
 
 // Example usage remains the same
-void runNeuralNetwork(float* input, int inputSize, int hiddenSize, int numLayers, int outputSize) {
+float* runNeuralNetwork(float* input, int inputSize, int hiddenSize, int numLayers, int outputSize, int batchSize) {
     std::vector<DenseLayer*> layers;
     // Create layers
-    layers.push_back(new DenseLayer(inputSize, hiddenSize, "relu"));
+    layers.push_back(new DenseLayer(inputSize, hiddenSize, batchSize, "relu"));
     for (int i = 1; i < numLayers - 1; ++i) {
-		printf("Creating hidden layer %d\n", i);
-        layers.push_back(new DenseLayer(hiddenSize, hiddenSize, "relu"));
+        printf("Creating hidden layer %d\n", i);
+        layers.push_back(new DenseLayer(hiddenSize, hiddenSize, batchSize, "relu"));
     }
-    layers.push_back(new DenseLayer(hiddenSize, outputSize, "softmax"));
+    layers.push_back(new DenseLayer(hiddenSize, outputSize, batchSize, "softmax"));
 
     // Forward pass
-	printf("numLayers: %d\n", numLayers);
+    printf("numLayers: %d\n", numLayers);
     float* layerInput = input;
     for (int i = 0; i < numLayers; ++i) {
         std::cout << "Layer " << i << " output:" << std::endl;
         layerInput = layers[i]->forward(layerInput);
     }
 
-	// Print the output of the last layer
-	printf("Output of the last layer:\n");
-	float* output = new float[layers[numLayers - 1]->getOutputSize()];
-	cudaMemcpy(output, layerInput, layers[numLayers - 1]->getOutputSize() * sizeof(float), cudaMemcpyDeviceToHost);
-	for (int i = 0; i < layers[numLayers - 1]->getOutputSize(); ++i) {
-		printf("%f ", output[i]);
-	}
-	printf("\n");
+    // Print the output of the last layer for the first batch
+    printf("Output of the last layer (first batch):\n");
+    float* output = new float[layers[numLayers - 1]->getOutputSize() * batchSize];
+    cudaMemcpy(output, layerInput, layers[numLayers - 1]->getOutputSize() * batchSize * sizeof(float), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < layers[numLayers - 1]->getOutputSize(); ++i) {
+        printf("%f ", output[i]);
+    }
+    printf("\n");
 
-    // The output of the last layer is now in layerInput
-    // TODO: Implement backpropagation
+	return output;
 
     // Clean up
-    for (auto& layer : layers) {
-        delete layer;
-    }
+    //for (auto& layer : layers) {
+    //    delete layer;
+    //}
+    //delete[] output;
 }
