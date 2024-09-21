@@ -1,44 +1,19 @@
 ﻿#include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <opencv2/opencv.hpp>
 #include <iostream>
+#include <curand.h>
+#include <curand_kernel.h>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
-#include <cassert>
-#include <cmath>
 
-#define IMG_SIZE 32*32*3 // 32x32x3
-#define NUM_IMAGES 10000 // 10000 images per batch
-#define DATA_BATCHES 5   // Total number of data batches
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+
 #define FILTER_SIZE 3
 
-// Updated to return a 1D array for easier usage with CUDA
-float* initialize_kernel(int n, const std::string& initializer) {
-    std::srand(static_cast<unsigned>(std::time(0)));
-    float scale;
-    if (initializer == "Xavier") {
-        scale = std::sqrt(2.0f / (n * n)); // Xavier initialization
-    }
-    else if (initializer == "He") {
-        scale = std::sqrt(2.0f / (n * n)); // He initialization
-    }
-    else {
-        std::cerr << "Unknown initializer " << initializer << std::endl;
-        return nullptr;
-    }
 
-    float* kernel = new float[n * n];
-
-    for (int i = 0; i < n * n; ++i) {
-        kernel[i] = scale * (static_cast<float>(std::rand()) / RAND_MAX * 2.0f - 1.0f);
-    }
-    printf("Kernel initialized\n");
-    return kernel;
-}
-
-
-// Doc https://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_64_website/projects/convolutionSeparable/doc/convolutionSeparable.pdf
+// CUDA kernel for convolution
 __global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -48,7 +23,7 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
 
     // Load filter into shared memory
     if (threadIdx.x < FILTER_SIZE && threadIdx.y < FILTER_SIZE) {
-		sharedFilter[threadIdx.y * FILTER_SIZE + threadIdx.x] = filter[threadIdx.y * FILTER_SIZE + threadIdx.x]; 
+        sharedFilter[threadIdx.y * FILTER_SIZE + threadIdx.x] = filter[threadIdx.y * FILTER_SIZE + threadIdx.x];
     }
     __syncthreads(); // Wait for all threads to load the filter
 
@@ -58,106 +33,181 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
             for (int fy = 0; fy < FILTER_SIZE; ++fy) {
                 for (int fx = 0; fx < FILTER_SIZE; ++fx) {
                     int imgX = x + fx;
-                    int imgY = y + fy; 
+                    int imgY = y + fy;
 
-                    int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c; 
+                    int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c;
                     sum += input[inputIndex] * sharedFilter[fy * FILTER_SIZE + fx];
                 }
             }
             int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
-            output[outIndex] = sum;
+            output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation // NEED TO FIX THIS
         }
     }
 }
 
-// Broken
-//void validateConvolutionOutput(const float* input, int inputWidth, int inputHeight, int inputChannels,
-//    const float* output, int filterSize, int stride = 1, int padding = 0) {
-//    // Calculate expected output dimensions
-//	printf("\nIN VALIDATE CONVOLUTION OUTPUT\n");
-//    int outputWidth = static_cast<int>(std::floor((inputWidth + 2 * padding - filterSize) / stride + 1));
-//    int outputHeight = static_cast<int>(std::floor((inputHeight + 2 * padding - filterSize) / stride + 1));
-//	int outputChannels = inputChannels;  // Number of channels remains the same (3)
-//
-//    // Calculate expected total elements in the output
-//    int expectedOutputSize = outputWidth * outputHeight * outputChannels;
-//
-//    // Calculate actual output size
-//    int actualOutputSize = 0;
-//    while (output[actualOutputSize] != 0 && actualOutputSize < inputWidth * inputHeight * inputChannels) {
-//        actualOutputSize++;
-//    }
-//
-//    // Assert that the calculated size matches the actual size
-//    assert(expectedOutputSize ==  && "Convolution output size mismatch");
-//
-//    // If assertion passes, print success message
-//    printf("Convolution output size validation passed.\n");
-//    printf("Input dimensions: %d x %d x %d\n", inputWidth, inputHeight, inputChannels);
-//    printf("Filter size: %d x %d\n", filterSize, filterSize);
-//    printf("Output dimensions: %d x %d x %d\n", outputWidth, outputHeight, outputChannels);
-//  //  printf("Total output elements: %d\n", actualOutputSizeexpectedOutputSize); //?
-//}
+__global__ void initializeFiltersKernel(float* filters, int inputChannels, int outputChannels, unsigned long long seed) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int total_elements = FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels;
 
-// Struct to hold convolution results
-struct ConvolutionResult {
-    float* output;
-    float* kernel;
-    int outputWidth;
-    int outputHeight;
-    int outputChannels;
-};
+    if (idx < total_elements) {
+        curandState state;
+        curand_init(seed, idx, 0, &state);
 
+        float fan_in = FILTER_SIZE * FILTER_SIZE * inputChannels;
+        float fan_out = FILTER_SIZE * FILTER_SIZE * outputChannels;
+        float limit = sqrt(6.0f / (fan_in + fan_out));
 
-// Need to work on passing filter to this function as filter values would change during backprop
-ConvolutionResult convolution(float* d_images_float, int inputWidth, int inputHeight, int numImages) {
-    printf("IN CONVOLUTION\n");
-    int channels = 3;
-    int outputWidth = inputWidth - FILTER_SIZE + 1;
-    int outputHeight = inputHeight - FILTER_SIZE + 1;
+        filters[idx] = curand_uniform(&state) * 2.0f * limit - limit;
+    }
+}
 
-    float* d_output;
-    cudaMalloc(&d_output, outputWidth * outputHeight * channels * numImages * sizeof(float));
+class ConvolutionLayer {
+private:
+    int inputWidth, inputHeight, inputChannels;
+    int outputWidth, outputHeight, outputChannels;
+    int poolOutputWidth, poolOutputHeight, poolOutputChannels;
+    int numImages;
+    float* d_filters;  // Device memory for filters
+    float* d_output;   // Device memory for output
 
-    // Create and initialize the filter using the updated initialize_kernel function
-    float* h_filter = initialize_kernel(FILTER_SIZE, "Xavier"); // or "He"
+public:
+    ConvolutionLayer(int inWidth, int inHeight, int inChannels, int numImages)
+        : inputWidth(inWidth), inputHeight(inHeight), inputChannels(inChannels), numImages(numImages) {
+        outputWidth = inputWidth - FILTER_SIZE + 1;
+        outputHeight = inputHeight - FILTER_SIZE + 1;
+        outputChannels = inputChannels; // Preserve the number of channels
 
-    // Copy the filter to the device
-    float* d_filter;
-    cudaMalloc(&d_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float));
-    cudaMemcpy(d_filter, h_filter, FILTER_SIZE * FILTER_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+        // Allocate and initialize filters
+        cudaMalloc(&d_filters, FILTER_SIZE * FILTER_SIZE * inputChannels * sizeof(float));
+        initializeFilters();
 
-    dim3 blockDim(16, 16); // 
-    dim3 gridDim(
-        (outputWidth + blockDim.x - 1) / blockDim.x,
-        (outputHeight + blockDim.y - 1) / blockDim.y,
-        numImages
-	); // 3D grid for multiple images // https://forums.developer.nvidia.com/t/3d-grids/10427
-    // https://forums.developer.nvidia.com/t/cuda-tiling-in-3d-grids-and-3d-blocks-with-shared-memory/201254
-
-    convolutionKernel << <gridDim, blockDim >> > (d_images_float, d_output, inputWidth, inputHeight, outputWidth, outputHeight, channels, d_filter);
-
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA Error: %s\n", cudaGetErrorString(err));
+        // Allocate memory for output
+        cudaMalloc(&d_output, outputWidth * outputHeight * outputChannels * numImages * sizeof(float));
     }
 
-    cudaDeviceSynchronize();
-    printf("Convolution done\n");
-
-    float* h_output = (float*)malloc(outputWidth * outputHeight * channels * numImages * sizeof(float));
-    cudaMemcpy(h_output, d_output, outputWidth * outputHeight * channels * numImages * sizeof(float), cudaMemcpyDeviceToHost);
-
-    // Validate the convolution output
-    //validateConvolutionOutput(d_images_float, inputWidth, inputHeight, channels,
-      //  h_output, FILTER_SIZE);
+    ~ConvolutionLayer() {
+        cudaFree(d_filters);
+        cudaFree(d_output);
+    }
 
 
-    // print image after convolution
-    int counter = 0;
-    printf("First image after convolution\n");
-    for (int i = 0; i < outputWidth * outputHeight * channels; i++) {
-        std::cout << h_output[i] << " ";
+    void initializeFilters() {
+        outputChannels = inputChannels;
+        int total_elements = FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels;
+
+        // Allocate device memory for filters
+        cudaMalloc(&d_filters, total_elements * sizeof(float));
+        int blockSize = 256;
+        int gridSize = (total_elements + blockSize - 1) / blockSize;
+
+        // Initialize random seed
+        unsigned long long seed = 1234ULL;  // You can change this seed or make it random
+        initializeFiltersKernel << <gridSize, blockSize >> > (d_filters, inputChannels, outputChannels, seed);
+        cudaError_t cudaStatus = cudaGetLastError();
+        if (cudaStatus != cudaSuccess) {
+            fprintf(stderr, "initializeFiltersKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        }
+        cudaDeviceSynchronize();
+    }
+
+
+    //void initializeFilters() {
+    //    float* h_filters = new float[FILTER_SIZE * FILTER_SIZE * inputChannels];
+    //    // Xavier initialization
+    //    float scale = sqrt(2.0f / (FILTER_SIZE * FILTER_SIZE * inputChannels));
+    //    for (int i = 0; i < FILTER_SIZE * FILTER_SIZE * inputChannels; ++i) {
+    //        h_filters[i] = scale * (static_cast<float>(rand()) / RAND_MAX * 2.0f - 1.0f);
+    //    }
+    //    cudaMemcpy(d_filters, h_filters, FILTER_SIZE * FILTER_SIZE * inputChannels * sizeof(float), cudaMemcpyHostToDevice);
+    //    delete[] h_filters;
+    //}
+
+
+    float* forward(float* d_input) {
+        dim3 blockDim(16, 16);
+        dim3 gridDim(
+            (outputWidth + blockDim.x - 1) / blockDim.x,
+            (outputHeight + blockDim.y - 1) / blockDim.y,
+            numImages
+        );
+
+        convolutionKernel << <gridDim, blockDim >> > (d_input, d_output, inputWidth, inputHeight,
+            outputWidth, outputHeight, inputChannels, d_filters);
+
+        cudaDeviceSynchronize();
+        //return d_output;
+
+        // perform maax pooling
+        MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), NUM_IMAGES);
+        float* d_pool_output = pool1.forward(d_output);
+
+        poolOutputWidth = pool1.getOutputWidth();
+        poolOutputHeight = pool1.getOutputHeight();
+        poolOutputChannels = pool1.getOutputChannels();
+
+        printf("\nPOOL 1 resutls - internal");
+        printf("\nOutput width: , Output height: , Output channels: %d %d %d\n", poolOutputWidth, poolOutputHeight, poolOutputChannels);
+
+        // perform ReLU activation
+        float* d_activated_output = nullptr;
+        cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES * sizeof(float));
+        applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * NUM_IMAGES, "relu");
+
+        return d_activated_output;
+
+    }
+
+    void updateFilters(float* gradients, float learningRate) {
+        // This is a placeholder for the actual update logic
+        // you'd apply the gradients to update the filters
+
+        // cudaMemcpy(h_filters, d_filters, filterSize, cudaMemcpyDeviceToHost);
+        // Update h_filters using gradients and learning rate
+        // cudaMemcpy(d_filters, h_filters, filterSize, cudaMemcpyHostToDevice);
+    }
+
+    void backprop(float* gradients) {
+        // This is a placeholder for the actual backpropagation logic
+        //  you'd calculate the gradients and backpropagate them
+
+        //updateFilters();
+    }
+
+    // Getter methods
+    int getOutputWidth() const { return outputWidth; }
+    int getOutputHeight() const { return outputHeight; }
+    int getOutputChannels() const { return outputChannels; }
+
+    int getPoolOutputWidth() const { return poolOutputWidth; }
+    int getPoolOutputHeight() const { return poolOutputHeight; }
+    int getPoolOutputChannels() const { return poolOutputChannels; }
+
+    float* getFilters() const { return d_filters; }
+
+};
+
+//// Usage example
+//int main() {
+//    // Assume we have d_input allocated and filled with input data
+//    float* d_input;
+//    int inputWidth = 32, inputHeight = 32, inputChannels = 3;
+//    int numImages = 64;
+//
+//    // Create a convolution layer
+//    ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, numImages);
+//
+//    // Perform forward pass
+//    float* d_output = conv1.forward(d_input);
+//
+//    // ... rest of the network ...
+//
+//    // During backpropagation
+//    float* gradients;  // Assume this is calculated
+//    float learningRate = 0.01;
+//    conv1.updateFilters(gradients, learningRate);
+//
+//    return 0;
+//}
         counter++;
     }
     std::cout << std::endl;

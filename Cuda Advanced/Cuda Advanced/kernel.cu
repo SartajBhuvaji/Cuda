@@ -69,46 +69,8 @@ int main() {
     cudaMemcpy(h_images_float, d_images_float, IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
 
     //cudaMemcpy(h_images_float, d_images_float, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
-
-	int class_count[10] = { 0 };
-
-    printf("\n FLAG 1");
-	// For loop to loop over each image 
-    for (int i = 0; i < NUM_IMAGES * DATA_BATCHES; i++) {
-        float* single_image, * single_label;
-
-        single_image = h_images_float + i * IMG_SIZE;
-        single_label = h_labels_float + i;
-
-        // Print the first 10 labels
-		class_count[(int)*single_label]++;
-
-
-		// Calling convolution function on the image
-        //TODO : Update conv func
-        int inputWidth = 32, inputHeight = 32, inputChannels = 3;
-        ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
-
-
-
-
-
-    }
     
-
-    printf("\n FLAG 2");
-	for (int i = 0; i < 10; i++) {
-		printf("Class %d: %d\n", i, class_count[i]);
-	}
-
-        printf("\n FLAG 3");
-        printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        
-
     // print the first 10 labels
-    for (int i = 0; i < 10; i++) {
-        std::cout << h_labels_float[i] << std::endl;
-    }
 
     // print the first image
     int counter = 0;
