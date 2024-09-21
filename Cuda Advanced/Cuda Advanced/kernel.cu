@@ -81,6 +81,7 @@ int main() {
     int inputWidth = 32, inputHeight = 32, inputChannels = 3;
     ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, BATCH_SIZE);
 
+
     // Create dense layers
     int convOutputSize = conv1.getPoolOutputWidth() * conv1.getPoolOutputHeight() * conv1.getPoolOutputChannels();
     int hiddenSize = 64;

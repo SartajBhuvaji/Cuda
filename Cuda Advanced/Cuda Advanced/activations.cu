@@ -123,6 +123,8 @@ __global__ void softmaxKernel(float* input, float* output, int size, int classes
 
 // Wrapper function to launch activation kernels
 void applyActivation(float* input, float* output, int size, const char* activationType, int classes = 10) {
+    cudaError_t error;
+   
     int blockSize = 256;
     int numBlocks = (size + blockSize - 1) / blockSize;
 
@@ -151,5 +153,9 @@ void applyActivation(float* input, float* output, int size, const char* activati
         printf("Unknown activation function: %s\n", activationType);
     }
 
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        printf("CUDA error in activation: %s\n", cudaGetErrorString(error));
+    }
     cudaDeviceSynchronize();
 }

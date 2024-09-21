@@ -70,6 +70,12 @@ std::tuple<unsigned char*, unsigned char*> load_data() {
     free(h_images);
     free(h_labels);
 
+	// Check Cuda errors
+	cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        printf("CUDA error in load_images: %s\n", cudaGetErrorString(error));
+    }
+
     return std::make_tuple(d_images, d_labels);
 }
 

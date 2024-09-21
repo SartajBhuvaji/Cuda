@@ -104,6 +104,12 @@ public:
         float* d_activated_output;
         cudaMalloc(&d_activated_output, outputSize * batchSize * sizeof(float));
 
+        // Check CUDA Errors
+		cudaError_t cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "forwardKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+		}
+
         applyActivation(d_output, d_activated_output, outputSize * batchSize, activationType);
         
 

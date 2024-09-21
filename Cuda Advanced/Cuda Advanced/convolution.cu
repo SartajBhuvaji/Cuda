@@ -142,8 +142,9 @@ public:
         initializeFiltersKernel << <gridSize, blockSize >> > (d_filters, inputChannels, outputChannels, seed);
         cudaError_t cudaStatus = cudaGetLastError();
         if (cudaStatus != cudaSuccess) {
-            fprintf(stderr, "initializeFiltersKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+            fprintf(stderr, "initialize Filters Kernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
         }
+
         cudaDeviceSynchronize();
     }
 
@@ -171,6 +172,11 @@ public:
         convolutionKernel << <gridDim, blockDim >> > (d_input, d_output, inputWidth, inputHeight,
             outputWidth, outputHeight, inputChannels, d_filters);
 
+        cudaError_t error = cudaGetLastError();
+        if (error != cudaSuccess) {
+            printf("CUDA error in convolution forward 1: %s\n", cudaGetErrorString(error));
+        }
+
         cudaDeviceSynchronize();
 
         //float h_output[10];
@@ -193,6 +199,13 @@ public:
         float* d_activated_output = nullptr;
         cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize * sizeof(float));
         applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize, "relu");
+
+
+		// Check for CUDA errors
+		error = cudaGetLastError();
+        if (error != cudaSuccess) {
+            printf("CUDA error in convolution forward 2: %s\n", cudaGetErrorString(error));
+        }
 
         return d_activated_output;
     }

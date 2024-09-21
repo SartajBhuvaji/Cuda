@@ -49,7 +49,7 @@ void preprocessImage(unsigned char* d_images, float** d_images_float,
     // Check for errors
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
-        printf("CUDA error: %s\n", cudaGetErrorString(error));
+        printf("CUDA error in preprocessImages: %s\n", cudaGetErrorString(error));
     }
 
     printf("Preprocessing complete\n");
