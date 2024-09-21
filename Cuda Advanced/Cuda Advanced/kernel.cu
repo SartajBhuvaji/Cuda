@@ -29,44 +29,6 @@ void gpu_mem_info() {
 }
 
 
-void convertAndDisplayImage(float* h_images_float, float* h_labels_float) {
-    cv::Mat img(32, 32, CV_8UC3);
-    for (int y = 0; y < 32; y++) {
-        for (int x = 0; x < 32; x++) {
-            for (int c = 0; c < 3; c++) {
-                img.at<cv::Vec3b>(y, x)[c] = static_cast<char>(static_cast<int>(h_images_float[y * 32 + x + c * 1024] * 225.0f));
-            }
-        }
-    }
-    // print RGB value of the first pixel
-    printf("RGB: %d %d %d\n", img.at<cv::Vec3b>(0, 0)[0], img.at<cv::Vec3b>(0, 0)[1], img.at<cv::Vec3b>(0, 0)[2]);
-    cv::resize(img, img, cv::Size(250, 250));
-    cv::imshow("Image", img);
-    printf("Label: %d\n", h_labels_float[0]);
-    cv::waitKey(5000);
-}
-
-
-void convertAndDisplayImage_old(float* h_images_float, int imageIndex, int width, int height) {
-    cv::Mat grayscaleImage(height, width, CV_32F);
-
-    // Copy the image data into the cv::Mat object
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            grayscaleImage.at<float>(i, j) = h_images_float[imageIndex * width * height + i * width + j];
-        }
-    }
-
-    // Normalize the image to 0-255 range
-    cv::Mat normalizedImage;
-    cv::normalize(grayscaleImage, normalizedImage, 0, 255, cv::NORM_MINMAX, CV_8U);
-
-    cv::Mat resizedImage;
-    cv::resize(normalizedImage, resizedImage, cv::Size(720, 720), 0, 0, cv::INTER_NEAREST);
-    cv::imshow("Grayscale Image", resizedImage);
-    cv::waitKey(0);
-    cv::destroyAllWindows();
-}
 
 int main() {
     // Step 1. Load data
@@ -96,6 +58,8 @@ int main() {
     cudaFree(d_images);
     cudaFree(d_labels);
 
+
+
     // copy from device to host
     float* h_labels_float = (float*)malloc(NUM_IMAGES * DATA_BATCHES * sizeof(float));
     //float* h_images_float = (float*)malloc(IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
@@ -105,6 +69,41 @@ int main() {
     cudaMemcpy(h_images_float, d_images_float, IMG_SIZE * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
 
     //cudaMemcpy(h_images_float, d_images_float, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float), cudaMemcpyDeviceToHost);
+
+	int class_count[10] = { 0 };
+
+    printf("\n FLAG 1");
+	// For loop to loop over each image 
+    for (int i = 0; i < NUM_IMAGES * DATA_BATCHES; i++) {
+        float* single_image, * single_label;
+
+        single_image = h_images_float + i * IMG_SIZE;
+        single_label = h_labels_float + i;
+
+        // Print the first 10 labels
+		class_count[(int)*single_label]++;
+
+
+		// Calling convolution function on the image
+        //TODO : Update conv func
+        int inputWidth = 32, inputHeight = 32, inputChannels = 3;
+        ConvolutionLayer conv1(inputWidth, inputHeight, inputChannels, NUM_IMAGES);
+
+
+
+
+
+    }
+    
+
+    printf("\n FLAG 2");
+	for (int i = 0; i < 10; i++) {
+		printf("Class %d: %d\n", i, class_count[i]);
+	}
+
+        printf("\n FLAG 3");
+        printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        
 
     // print the first 10 labels
     for (int i = 0; i < 10; i++) {

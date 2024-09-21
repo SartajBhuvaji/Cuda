@@ -72,3 +72,15 @@ std::tuple<unsigned char*, unsigned char*> load_data() {
 
     return std::make_tuple(d_images, d_labels);
 }
+
+
+// Function to return the n th image from the batch and the nth label
+//std::tuple<unsigned char*, unsigned char> get_image(unsigned char* d_images, unsigned char* d_labels, int n) {
+//	unsigned char* h_images = (unsigned char*)malloc(IMG_SIZE);
+//	unsigned char h_label;
+//
+//	cudaMemcpy(h_images, d_images + n * IMG_SIZE, IMG_SIZE, cudaMemcpyDeviceToHost);
+//	cudaMemcpy(&h_label, d_labels + n, 1, cudaMemcpyDeviceToHost);
+//
+//	return std::make_tuple(h_images, h_label);
+//}
