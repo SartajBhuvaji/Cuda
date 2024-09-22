@@ -45,12 +45,12 @@
 //    }
 //}
 
-__global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter) {
+__global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter, int batchSize) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
-    int z = blockIdx.z; // for multiple images
+    int b = blockIdx.z; // batch index
 
-    if (x < outputWidth && y < outputHeight) {
+    if (x < outputWidth && y < outputHeight && b < batchSize) {
         for (int c = 0; c < channels; ++c) {
             float sum = 0.0f;
             for (int fy = 0; fy < FILTER_SIZE; ++fy) {
@@ -58,25 +58,13 @@ __global__ void convolutionKernel(float* input, float* output, int inputWidth, i
                     int imgX = x + fx;
                     int imgY = y + fy;
 
-                    int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c;
+                    int inputIndex = ((b * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels) + c;
                     int filterIndex = (fy * FILTER_SIZE + fx) * channels + c;
                     sum += input[inputIndex] * filter[filterIndex];
-
-                    // Debugging: Print intermediate values
-                    if (x == 0 && y == 0 && z == 0 && c == 0) {
-                        printf("Conv: input[%d] = %f, filter[%d] = %f, product = %f\n",
-                            inputIndex, input[inputIndex], filterIndex, filter[filterIndex],
-                            input[inputIndex] * filter[filterIndex]);
-                    }
                 }
             }
-            int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
+            int outIndex = ((b * outputHeight * outputWidth + y * outputWidth + x) * channels) + c;
             output[outIndex] = sum;
-
-            // Debugging: Print final sum
-            if (x == 0 && y == 0 && z == 0 && c == 0) {
-                printf("Conv: Final sum for output[%d] = %f\n", outIndex, sum);
-            }
         }
     }
 }
@@ -140,6 +128,8 @@ public:
         // Initialize random seed
         unsigned long long seed = 1234ULL;  // You can change this seed or make it random
         initializeFiltersKernel << <gridSize, blockSize >> > (d_filters, inputChannels, outputChannels, seed);
+
+        // Check CUDA ERRORS
         cudaError_t cudaStatus = cudaGetLastError();
         if (cudaStatus != cudaSuccess) {
             fprintf(stderr, "initialize Filters Kernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
@@ -170,7 +160,17 @@ public:
         );
 
         convolutionKernel << <gridDim, blockDim >> > (d_input, d_output, inputWidth, inputHeight,
-            outputWidth, outputHeight, inputChannels, d_filters);
+            outputWidth, outputHeight, inputChannels, d_filters, batchSize);
+
+		//// Print first 10 values of d_filters
+		//float h_filters[10];
+		//cudaMemcpy(h_filters, d_filters, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+		//printf("Filters (first 10 values):\n");
+		//for (int i = 0; i < 10; ++i) {
+		//	printf("%f ", h_filters[i]);
+		//}
+		//printf("\n");
+
 
         cudaError_t error = cudaGetLastError();
         if (error != cudaSuccess) {
@@ -179,13 +179,13 @@ public:
 
         cudaDeviceSynchronize();
 
-        //float h_output[10];
-        //cudaMemcpy(h_output, d_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-        //printf("Convolution output (first 10 values):\n");
-        //for (int i = 0; i < 10; ++i) {
-        //    printf("%f ", h_output[i]);
-        //}
-        //printf("\n");
+        float h_output[10];
+        cudaMemcpy(h_output, d_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+        printf("Convolution output (first 10 values):\n");
+        for (int i = 0; i < 10; ++i) {
+            printf("%f ", h_output[i]);
+        }
+        printf("\n");
 
         // Perform max pooling
         MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), batchSize);
@@ -206,7 +206,7 @@ public:
         if (error != cudaSuccess) {
             printf("CUDA error in convolution forward 2: %s\n", cudaGetErrorString(error));
         }
-
+       
         return d_activated_output;
     }
 

@@ -101,25 +101,35 @@ int main() {
         // Pointer to the current batch of images
         float* d_batch_images = d_images_float + batchOffset;
 
-        // Perform forward pass for the current batch through convolution layer
         float* conv_output = conv1.forward(d_batch_images);
 
         printf("\nBatch %d - CONV 1 results:", batch);
         printf("\nOutput width: %d, Output height: %d, Output channels: %d\n",
             conv1.getPoolOutputWidth(), conv1.getPoolOutputHeight(), conv1.getPoolOutputChannels());
 
-        // Forward pass through dense layers
-        float* denseInput = conv_output;
-        for (int i = 0; i < denseLayers.size(); ++i) {
-            denseInput = denseLayers[i]->forward(denseInput);
-            printf("Dense Layer %d output (first few values of first batch):\n", i);
-            float h_output[10];
-            cudaMemcpy(h_output, denseInput, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-            for (int j = 0; j < 10; ++j) {
-                printf("%f ", h_output[j]);
-            }
-            printf("\n");
-        }
+		// Copy the result back to host
+		float* h_conv_output = (float*)malloc(conv1.getPoolOutputWidth() * conv1.getPoolOutputHeight() * conv1.getPoolOutputChannels() * BATCH_SIZE * sizeof(float));
+		cudaMemcpy(h_conv_output, conv_output, conv1.getPoolOutputWidth() * conv1.getPoolOutputHeight() * conv1.getPoolOutputChannels() * BATCH_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+
+		// Print the first 10 values of the first batch
+		for (int i = 0; i < 10; ++i) {
+			printf("\n\nBatch %d:", batch);
+			printf("%f ", h_conv_output[i]);
+		}
+
+
+        //// Forward pass through dense layers
+        //float* denseInput = conv_output;
+        //for (int i = 0; i < denseLayers.size(); ++i) {
+        //    denseInput = denseLayers[i]->forward(denseInput);
+        //    printf("Dense Layer %d output (first few values of first batch):\n", i);
+        //    float h_output[10];
+        //    cudaMemcpy(h_output, denseInput, 10 * sizeof(float), cudaMemcpyDeviceToHost);
+        //    for (int j = 0; j < 10; ++j) {
+        //        printf("%f ", h_output[j]);
+        //    }
+        //    printf("\n");
+        //}
 
         // The final output is now in denseInput
         // TODO: Implement loss calculation and backpropagation
