@@ -84,37 +84,22 @@ __global__ void reluKernel(float* input, float* output, int size) {
 }
 
 // Softmax activation function (for the last layer of classification networks)
-__global__ void softmaxKernel(float* input, float* output, int size, int classes) {
-    int batchIdx = blockIdx.x;
-    int classIdx = threadIdx.x;
-
-    if (classIdx < classes) {
-        int start = batchIdx * classes;
-        int end = start + classes;
-
-        // Find max value for numerical stability
-        float max_val = input[start];
-        for (int i = start + 1; i < end; ++i) {
-            max_val = fmaxf(max_val, input[i]);
+__global__ void softmaxKernel(float* input, float* output, int batchSize, int numClasses) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < batchSize) {
+        float maxVal = -INFINITY;
+        for (int i = 0; i < numClasses; ++i) {
+            maxVal = fmaxf(maxVal, input[idx * numClasses + i]);
         }
 
-        // Compute exp and sum
         float sum = 0.0f;
-        float exp_vals[64];  // Assuming max 64 classes, adjust if needed
-
-        for (int i = 0; i < classes; ++i) {
-            exp_vals[i] = expf(input[start + i] - max_val);
-            sum += exp_vals[i];
+        for (int i = 0; i < numClasses; ++i) {
+            output[idx * numClasses + i] = expf(input[idx * numClasses + i] - maxVal);
+            sum += output[idx * numClasses + i];
         }
 
-        // Normalize
-        output[start + classIdx] = exp_vals[classIdx] / sum;
-
-        // Debugging
-        if (batchIdx == 0 && classIdx < 10) {
-            printf("Softmax: Input[%d] = %f, Output[%d] = %f\n",
-                start + classIdx, input[start + classIdx],
-                start + classIdx, output[start + classIdx]);
+        for (int i = 0; i < numClasses; ++i) {
+            output[idx * numClasses + i] /= sum;
         }
     }
 }

@@ -162,32 +162,9 @@ public:
         convolutionKernel << <gridDim, blockDim >> > (d_input, d_output, inputWidth, inputHeight,
             outputWidth, outputHeight, inputChannels, d_filters, batchSize);
 
-		//// Print first 10 values of d_filters
-		//float h_filters[10];
-		//cudaMemcpy(h_filters, d_filters, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-		//printf("Filters (first 10 values):\n");
-		//for (int i = 0; i < 10; ++i) {
-		//	printf("%f ", h_filters[i]);
-		//}
-		//printf("\n");
-
-
-        cudaError_t error = cudaGetLastError();
-        if (error != cudaSuccess) {
-            printf("CUDA error in convolution forward 1: %s\n", cudaGetErrorString(error));
-        }
-
         cudaDeviceSynchronize();
 
-        float h_output[10];
-        cudaMemcpy(h_output, d_output, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-        printf("Convolution output (first 10 values):\n");
-        for (int i = 0; i < 10; ++i) {
-            printf("%f ", h_output[i]);
-        }
-        printf("\n");
-
-        // Perform max pooling
+        // Perform max pooling and activation
         MaxPoolingLayer pool1(getOutputWidth(), getOutputHeight(), getOutputChannels(), batchSize);
         float* d_pool_output = pool1.forward(d_output);
 
@@ -195,18 +172,10 @@ public:
         poolOutputHeight = pool1.getOutputHeight();
         poolOutputChannels = pool1.getOutputChannels();
 
-        // Perform ReLU activation
         float* d_activated_output = nullptr;
         cudaMalloc(&d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize * sizeof(float));
         applyActivation(d_pool_output, d_activated_output, poolOutputWidth * poolOutputHeight * poolOutputChannels * batchSize, "relu");
 
-
-		// Check for CUDA errors
-		error = cudaGetLastError();
-        if (error != cudaSuccess) {
-            printf("CUDA error in convolution forward 2: %s\n", cudaGetErrorString(error));
-        }
-       
         return d_activated_output;
     }
 

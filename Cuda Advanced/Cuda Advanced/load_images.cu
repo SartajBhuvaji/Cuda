@@ -60,21 +60,14 @@ std::tuple<unsigned char*, unsigned char*> load_data() {
 
     // Load all data batches
     for (int i = 1; i <= DATA_BATCHES; i++) {
-        snprintf(full_path, sizeof(full_path), "%s%d.bin", base_path, i);
+        sprintf(full_path, "%s%d.bin", base_path, i);
         loadBatch(full_path, h_images, h_labels, (i - 1) * NUM_IMAGES);
     }
 
-	transferToCUDA(d_images, h_images, d_labels, h_labels);
-    printf("Data loaded and transferred to CUDA\n");
+    transferToCUDA(d_images, h_images, d_labels, h_labels);
 
     free(h_images);
     free(h_labels);
-
-	// Check Cuda errors
-	cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess) {
-        printf("CUDA error in load_images: %s\n", cudaGetErrorString(error));
-    }
 
     return std::make_tuple(d_images, d_labels);
 }
