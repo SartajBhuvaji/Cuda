@@ -3,13 +3,13 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\load_images.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\preprocess_images.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
-//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cuh>
-#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layer.cu>
+#include "load_images.cu"
+#include "preprocess_images.cu"
+#include "verify_images.cu"
+#include "convolution.cu"
+//#include "max_pooling.cu"
+#include "activations.cuh"
+#include "dense_layer.cu"
 #include "backpropagation.cu"
 #include "sgd.cu"
 #include "loss.cu"
