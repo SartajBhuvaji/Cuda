@@ -10,12 +10,75 @@
 //#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
 //#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layer.cu>
-
+#include "backpropagation.cu"
+#include "sgd.cu"
+#include "loss.cu"
 
 #define IMG_SIZE 32*32*3 // 32x32x3
 #define NUM_IMAGES 10000 // 10000 images per batch
 #define DATA_BATCHES 5   // Total number of data batches
+#define EPOCHS 10
+#define LEARNING_RATE 0.01f
+#define NUM_TEST_SAMPLES 10 // Number of test samples to evaluate
 
+// Function to get predicted class (returns index of maximum value)
+__global__ void getPredictedClass(float* softmax_output, int* predictions, int batchSize, int numClasses) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < batchSize) {
+        float maxVal = softmax_output[idx * numClasses];
+        int maxIdx = 0;
+        
+        for (int i = 1; i < numClasses; ++i) {
+            float val = softmax_output[idx * numClasses + i];
+            if (val > maxVal) {
+                maxVal = val;
+                maxIdx = i;
+            }
+        }
+        predictions[idx] = maxIdx;
+    }
+}
+
+// Function to evaluate model on test samples
+void evaluateModel(ConvolutionLayer& conv1, DenseLayer& dense1, DenseLayer& dense2, 
+                  float* test_images, float* test_labels, int numSamples) {
+    
+    // Forward pass
+    float* conv_output = conv1.forward(test_images);
+    float* dense_output1 = dense1.forward(conv_output);
+    float* dense_output2 = dense2.forward(dense_output1);
+
+    // Apply softmax
+    float* softmax_output;
+    cudaMalloc(&softmax_output, numSamples * 10 * sizeof(float));
+    dim3 blockDim_softmax(256);
+    dim3 gridDim_softmax((numSamples + blockDim_softmax.x - 1) / blockDim_softmax.x);
+    softmaxKernel<<<gridDim_softmax, blockDim_softmax>>>(dense_output2, softmax_output, numSamples, 10);
+    
+    // Get predictions
+    int* d_predictions;
+    cudaMalloc(&d_predictions, numSamples * sizeof(int));
+    getPredictedClass<<<(numSamples + 255) / 256, 256>>>(softmax_output, d_predictions, numSamples, 10);
+    
+    // Copy predictions and labels to host
+    int* h_predictions = new int[numSamples];
+    float* h_labels = new float[numSamples];
+    cudaMemcpy(h_predictions, d_predictions, numSamples * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_labels, test_labels, numSamples * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Print results
+    std::cout << "\nTest Results:" << std::endl;
+    std::cout << "Sample\tPredicted\tActual" << std::endl;
+    for (int i = 0; i < numSamples; ++i) {
+        std::cout << i << "\t" << h_predictions[i] << "\t\t" << (int)h_labels[i] << std::endl;
+    }
+
+    // Cleanup
+    delete[] h_predictions;
+    delete[] h_labels;
+    cudaFree(softmax_output);
+    cudaFree(d_predictions);
+}
 
 void gpu_mem_info() {
     size_t free_byte;
@@ -27,15 +90,16 @@ void gpu_mem_info() {
     std::cout << "\nGPU memory usage: used = " << used_db / 1024.0 / 1024.0 << "MB, free = " << free_db / 1024.0 / 1024.0 << "MB, total = " << total_db / 1024.0 / 1024.0 << "MB" << std::endl;
 }
 
-
-
 int main() {
+    // Seed for reproducibility
+    srand(time(0));
+
     // Load data
     unsigned char* d_images = nullptr;
     unsigned char* d_labels = nullptr;
     std::tie(d_images, d_labels) = load_data();
 
-    // Preprocess and convert to float
+    // Preprocess and convert to float (one-hot encoded labels)
     float* d_images_float = nullptr;
     float* d_labels_float = nullptr;
     preprocessImage(d_images, &d_images_float, d_labels, &d_labels_float);
@@ -51,72 +115,67 @@ int main() {
     DenseLayer dense2(64, 10, NUM_IMAGES); // Assuming 10 classes for classification
     float* dense_output2 = dense2.forward(dense_output1);
 
-    // Apply softmax activation
-    float* softmax_output;
-    cudaMalloc(&softmax_output, 10 * NUM_IMAGES * sizeof(float));
-    dim3 blockDim(256);
-    dim3 gridDim((NUM_IMAGES + blockDim.x - 1) / blockDim.x);
-    softmaxKernel<<<gridDim, blockDim>>>(dense_output2, softmax_output, NUM_IMAGES, 10);
-    cudaDeviceSynchronize();
+    // Allocate memory for gradients for Dense Layer 2
+    float* d_gradients_dense2;
+    cudaMalloc(&d_gradients_dense2, 10 * NUM_IMAGES * sizeof(float));
 
-    // Copy the result back to host for visualization
-    float* h_softmax_output = (float*)malloc(10 * NUM_IMAGES * sizeof(float));
-    cudaMemcpy(h_softmax_output, softmax_output, 10 * NUM_IMAGES * sizeof(float), cudaMemcpyDeviceToHost);
+    // Training loop
+    for (int epoch = 0; epoch < EPOCHS; ++epoch) {
+        // Forward pass
+        float* conv_output = conv1.forward(d_images_float);
+        float* dense_output1 = dense1.forward(conv_output);
+        float* dense_output2 = dense2.forward(dense_output1);
 
-    // Display actual and predicted labels for the first few images
-    unsigned char* h_labels = (unsigned char*)malloc(NUM_IMAGES);
-    cudaMemcpy(h_labels, d_labels, NUM_IMAGES, cudaMemcpyDeviceToHost);
+        // Apply softmax activation
+        float* softmax_output;
+        cudaMalloc(&softmax_output, 10 * NUM_IMAGES * sizeof(float));
+        dim3 blockDim_softmax(256);
+        dim3 gridDim_softmax((NUM_IMAGES + blockDim_softmax.x - 1) / blockDim_softmax.x);
+        softmaxKernel<<<gridDim_softmax, blockDim_softmax>>>(dense_output2, softmax_output, NUM_IMAGES, 10);
+        cudaDeviceSynchronize();
 
-    for (int i = 0; i < 5; ++i) {
-        int predicted_label = 0;
-        float max_prob = h_softmax_output[i * 10];
-        for (int j = 1; j < 10; ++j) {
-            if (h_softmax_output[i * 10 + j] > max_prob) {
-                max_prob = h_softmax_output[i * 10 + j];
-                predicted_label = j;
-            }
-        }
-        std::cout << "Image " << i << ": Actual Label = " << (int)h_labels[i] << ", Predicted Label = " << predicted_label << std::endl;
+        // Calculate and print loss
+        float loss = calculateLoss(softmax_output, d_labels_float, 10, NUM_IMAGES);
+        std::cout << "Epoch " << epoch + 1 << ": Loss = " << loss << std::endl;
+
+        // Backpropagation for Dense Layer 2
+        backpropagate(softmax_output, d_labels_float, d_gradients_dense2, 10, NUM_IMAGES);
+
+        // Update weights and biases for Dense Layer 2 using SGD
+        dense2.backward(dense_output1, d_gradients_dense2);
+        sgdUpdateWeights(dense2.getWeights(), dense2.getGradWeights(), 64 * 10, LEARNING_RATE);
+        sgdUpdateBiases(dense2.getBiases(), dense2.getGradBiases(), 10, LEARNING_RATE);
+
+        // Backpropagation for Dense Layer 1
+        float* d_gradients_dense1 = dense1.getGradWeights();
+        dense1.backward(conv_output, d_gradients_dense1);
+        sgdUpdateWeights(dense1.getWeights(), dense1.getGradWeights(), dense1.getOutputSize() * dense1.getBatchSize(), LEARNING_RATE);
+        sgdUpdateBiases(dense1.getBiases(), dense1.getGradBiases(), dense1.getOutputSize(), LEARNING_RATE);
+
+        // Backpropagation for Convolution Layer
+        float* d_gradients_conv = conv1.getGradFilters();
+        conv1.backward(d_images_float, d_gradients_conv);
+        sgdUpdateWeights(conv1.getFilters(), conv1.getGradFilters(), FILTER_SIZE * FILTER_SIZE * conv1.getOutputChannels(), LEARNING_RATE);
+
+        // Free softmax_output
+        cudaFree(softmax_output);
     }
 
+    // Test the model on some samples
+    std::cout << "\nEvaluating model on test samples..." << std::endl;
+    evaluateModel(conv1, dense1, dense2, 
+                 d_images_float, // Using first NUM_TEST_SAMPLES images from training set
+                 d_labels_float, 
+                 NUM_TEST_SAMPLES);
+
     // Free resources
-    free(h_softmax_output);
-    free(h_labels);
+    cudaFree(d_gradients_dense2);
     cudaFree(d_images);
     cudaFree(d_labels);
     cudaFree(d_images_float);
     cudaFree(d_labels_float);
     cudaFree(dense_output1);
     cudaFree(dense_output2);
-    cudaFree(softmax_output);
 
     return 0;
 }
-
-
-/*
-
-float* d_images_gray_norm;
-float* d_labels_float;
-cudaMalloc(&d_images_gray_norm, IMG_SIZE / 3 * NUM_IMAGES * DATA_BATCHES * sizeof(float));
-cudaMalloc(&d_labels_float, NUM_IMAGES * DATA_BATCHES * sizeof(float));
-
-preprocessImages(d_images, d_images_gray_norm, d_labels, d_labels_float);
-verifyGrayscaleConversion(d_images_gray_norm, d_labels_float);
-
-// Free memory on gpu
-/*cudaFree(d_images);
-cudaFree(d_labels);
-
-
-float* d_output;
-cudaMalloc(&d_output, (IMG_WIDTH - 2) * (IMG_HEIGHT - 2) * NUM_IMAGES * DATA_BATCHES * sizeof(float));
-perform_convolution(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
-
-// Verify grayscale conversion, normalization, and convolution
-verify_grayscale_normalization(d_images_gray_norm, d_labels_float, NUM_IMAGES * DATA_BATCHES);
-
-// Clean up
-cudaFree(d_output);
-
-*/

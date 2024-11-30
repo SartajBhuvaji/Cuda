@@ -18,12 +18,25 @@ __global__ void denseForwardKernel(float* input, float* weights, float* biases, 
     }
 }
 
+// Kernel for dense layer backward pass
+__global__ void denseBackwardKernel(float* input, float* gradients, float* grad_weights, float* grad_biases, int inputSize, int outputSize, int batchSize) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < batchSize && col < outputSize) {
+        grad_weights[col * inputSize + row] = input[row * inputSize + col] * gradients[row * outputSize + col];
+        grad_biases[col] += gradients[row * outputSize + col];
+    }
+}
+
 class DenseLayer {
 private:
     int inputSize, outputSize, batchSize;
     float* d_weights;  // Device memory for weights
     float* d_biases;   // Device memory for biases
     float* d_output;   // Device memory for output
+    float* d_grad_weights;  // Device memory for weight gradients
+    float* d_grad_biases;   // Device memory for bias gradients
 
 public:
     DenseLayer(int inSize, int outSize, int batchSize)
@@ -32,6 +45,8 @@ public:
         cudaMalloc(&d_weights, inputSize * outputSize * sizeof(float));
         cudaMalloc(&d_biases, outputSize * sizeof(float));
         cudaMalloc(&d_output, outputSize * batchSize * sizeof(float));
+        cudaMalloc(&d_grad_weights, inputSize * outputSize * sizeof(float));
+        cudaMalloc(&d_grad_biases, outputSize * sizeof(float));
 
         // Initialize weights and biases
         initializeParameters();
@@ -41,6 +56,8 @@ public:
         cudaFree(d_weights);
         cudaFree(d_biases);
         cudaFree(d_output);
+        cudaFree(d_grad_weights);
+        cudaFree(d_grad_biases);
     }
 
     void initializeParameters() {
@@ -84,5 +101,19 @@ public:
     int getOutputSize() const { return outputSize; }
     int getBatchSize() const { return batchSize; }
     float* getWeights() const { return d_weights; }
-    float* getBias() const { return d_biases; }
+    float* getBiases() const { return d_biases; }
+    float* getGradWeights() const { return d_grad_weights; }
+    float* getGradBiases() const { return d_grad_biases; }
+
+    void backward(float* d_input, float* d_gradients) {
+        // Reset gradients to zero
+        cudaMemset(d_grad_weights, 0, inputSize * outputSize * sizeof(float));
+        cudaMemset(d_grad_biases, 0, outputSize * sizeof(float));
+
+        dim3 blockDim(16, 16);
+        dim3 gridDim((outputSize + blockDim.x - 1) / blockDim.x, (batchSize + blockDim.y - 1) / blockDim.y);
+
+        denseBackwardKernel<<<gridDim, blockDim>>>(d_input, d_gradients, d_grad_weights, d_grad_biases, inputSize, outputSize, batchSize);
+        cudaDeviceSynchronize();
+    }
 };

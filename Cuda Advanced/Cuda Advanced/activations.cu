@@ -75,11 +75,6 @@ __global__ void reluKernel(float* input, float* output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         output[idx] = fmaxf(input[idx], 0.0f);
-
-        // Debugging
-        if (idx < 10) {
-            printf("ReLU: Input[%d] = %f, Output[%d] = %f\n", idx, input[idx], idx, output[idx]);
-        }
     }
 }
 

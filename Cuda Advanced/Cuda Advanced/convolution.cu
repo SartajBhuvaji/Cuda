@@ -12,38 +12,33 @@
 
 #define FILTER_SIZE 3
 
+// Kernel for computing gradients during backpropagation
+__global__ void convBackwardKernel(float* d_output, float* d_gradients, float* d_input, float* d_grad_filters, 
+    int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, int batchSize) {
+    
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int b = blockIdx.z; // batch index
 
-// CUDA kernel for convolution
-//__global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter) {
-//    int x = blockIdx.x * blockDim.x + threadIdx.x;
-//    int y = blockIdx.y * blockDim.y + threadIdx.y;
-//    int z = blockIdx.z; // for multiple images
-//
-//    __shared__ float sharedFilter[FILTER_SIZE * FILTER_SIZE];
-//
-//    // Load filter into shared memory
-//    if (threadIdx.x < FILTER_SIZE && threadIdx.y < FILTER_SIZE) {
-//        sharedFilter[threadIdx.y * FILTER_SIZE + threadIdx.x] = filter[threadIdx.y * FILTER_SIZE + threadIdx.x];
-//    }
-//    __syncthreads(); // Wait for all threads to load the filter
-//
-//    if (x < outputWidth && y < outputHeight) {
-//        for (int c = 0; c < channels; ++c) {
-//            float sum = 0.0f;
-//            for (int fy = 0; fy < FILTER_SIZE; ++fy) {
-//                for (int fx = 0; fx < FILTER_SIZE; ++fx) {
-//                    int imgX = x + fx;
-//                    int imgY = y + fy;
-//
-//                    int inputIndex = (z * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels + c;
-//                    sum += input[inputIndex] * sharedFilter[fy * FILTER_SIZE + fx];
-//                }
-//            }
-//            int outIndex = (z * outputHeight * outputWidth + y * outputWidth + x) * channels + c;
-//			output[outIndex] = fmaxf(sum, 0.0f); // ReLU activation // NEED TO FIX THIS
-//        }
-//    }
-//}
+    if (x < outputWidth && y < outputHeight && b < batchSize) {
+        for (int c = 0; c < channels; ++c) {
+            for (int fy = 0; fy < FILTER_SIZE; ++fy) {
+                for (int fx = 0; fx < FILTER_SIZE; ++fx) {
+                    int imgX = x + fx;
+                    int imgY = y + fy;
+                    if (imgX < inputWidth && imgY < inputHeight) {
+                        int inputIdx = ((b * inputHeight * inputWidth + imgY * inputWidth + imgX) * channels) + c;
+                        int gradIdx = ((b * outputHeight * outputWidth + y * outputWidth + x) * channels) + c;
+                        int filterIdx = (fy * FILTER_SIZE + fx) * channels + c;
+                        
+                        atomicAdd(&d_grad_filters[filterIdx], 
+                                d_input[inputIdx] * d_gradients[gradIdx]);
+                    }
+                }
+            }
+        }
+    }
+}
 
 __global__ void convolutionKernel(float* input, float* output, int inputWidth, int inputHeight, int outputWidth, int outputHeight, int channels, float* filter, int batchSize) {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -94,6 +89,7 @@ private:
     int batchSize;
     float* d_filters;  // Device memory for filters
     float* d_output;   // Device memory for output
+    float* d_grad_filters;  // Device memory for filter gradients
 
 public:
     ConvolutionLayer(int inWidth, int inHeight, int inChannels, int batchSize)
@@ -108,11 +104,15 @@ public:
 
         // Allocate memory for output
         cudaMalloc(&d_output, outputWidth * outputHeight * outputChannels * batchSize * sizeof(float));
+
+        // Allocate memory for filter gradients
+        cudaMalloc(&d_grad_filters, FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels * sizeof(float));
     }
 
     ~ConvolutionLayer() {
         cudaFree(d_filters);
         cudaFree(d_output);
+        cudaFree(d_grad_filters);
     }
 
 
@@ -206,6 +206,24 @@ public:
 
 	float* getFilters() const { return d_filters; }
     int getBatchSize() const { return batchSize; }
+
+    void backward(float* d_input, float* d_gradients) {
+        // Reset gradients to zero
+        cudaMemset(d_grad_filters, 0, FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels * sizeof(float));
+
+        dim3 blockDim(16, 16);
+        dim3 gridDim(
+            (outputWidth + blockDim.x - 1) / blockDim.x,
+            (outputHeight + blockDim.y - 1) / blockDim.y,
+            batchSize
+        );
+
+        convBackwardKernel<<<gridDim, blockDim>>>(d_output, d_gradients, d_input, d_grad_filters, 
+            inputWidth, inputHeight, outputWidth, outputHeight, inputChannels, batchSize);
+        cudaDeviceSynchronize();
+    }
+
+    float* getGradFilters() const { return d_grad_filters; }
 
 };
 
