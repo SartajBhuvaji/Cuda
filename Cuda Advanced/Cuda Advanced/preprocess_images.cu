@@ -28,7 +28,19 @@ __global__ void normalizeRGBImages(unsigned char* d_images, float* d_images_floa
     }
 }
 
-
+__global__ void oneHotEncodeLabels(unsigned char* labels, float* encoded_labels, 
+                                  int numSamples, int numClasses) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < numSamples) {
+        // Clear all classes
+        for (int i = 0; i < numClasses; i++) {
+            encoded_labels[idx * numClasses + i] = 0.0f;
+        }
+        // Set the correct class to 1
+        int label = labels[idx];
+        encoded_labels[idx * numClasses + label] = 1.0f;
+    }
+}
 
 void preprocessImage(unsigned char* d_images, float** d_images_float,
     unsigned char* d_labels, float** d_labels_float)

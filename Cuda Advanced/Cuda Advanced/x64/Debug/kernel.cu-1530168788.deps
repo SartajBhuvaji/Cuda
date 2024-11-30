@@ -208,6 +208,7 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_function
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_functions.hpp
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include\vector_types.h
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\activations.cu
+C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\activations.cuh
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\backpropagation.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\convolution.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\dense_layer.cu

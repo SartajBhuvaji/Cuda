@@ -6,7 +6,13 @@
 __global__ void sgdWeightsKernel(float* d_weights, float* d_gradients, int size, float learningRate) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        d_weights[idx] -= learningRate * d_gradients[idx];
+        // Clip gradients to prevent explosion
+        float gradient = d_gradients[idx];
+        float max_grad = 1.0f;
+        if (gradient > max_grad) gradient = max_grad;
+        if (gradient < -max_grad) gradient = -max_grad;
+        
+        d_weights[idx] -= learningRate * gradient;
     }
 }
 

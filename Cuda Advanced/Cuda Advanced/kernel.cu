@@ -8,7 +8,7 @@
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\verify_images.cu>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\convolution.cu>
 //#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\max_pooling.cu>
-//#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cu>
+#include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\activations.cuh>
 #include<C:\\Users\\sbhuv\\Desktop\\Cuda\\Cuda\\Cuda Advanced\\Cuda Advanced\\dense_layer.cu>
 #include "backpropagation.cu"
 #include "sgd.cu"
@@ -18,8 +18,10 @@
 #define NUM_IMAGES 10000 // 10000 images per batch
 #define DATA_BATCHES 5   // Total number of data batches
 #define EPOCHS 10
-#define LEARNING_RATE 0.01f
+#define LEARNING_RATE 0.0001f
 #define NUM_TEST_SAMPLES 10 // Number of test samples to evaluate
+#define BATCH_SIZE 32          // Add batch processing
+#define WEIGHT_DECAY 0.0001f   // Add weight decay to prevent overfitting
 
 // Function to get predicted class (returns index of maximum value)
 __global__ void getPredictedClass(float* softmax_output, int* predictions, int batchSize, int numClasses) {
@@ -123,9 +125,25 @@ int main() {
     for (int epoch = 0; epoch < EPOCHS; ++epoch) {
         // Forward pass
         float* conv_output = conv1.forward(d_images_float);
+        
+        // Add ReLU activation after convolution
+        int convOutputSize = conv1.getPoolOutputWidth() * conv1.getPoolOutputHeight() * 
+                            conv1.getPoolOutputChannels() * NUM_IMAGES;
+        dim3 reluBlock(256);
+        dim3 reluGrid((convOutputSize + 255) / 256);
+        reluActivationKernel<<<reluGrid, reluBlock>>>(conv_output, conv_output, convOutputSize);
+        
         float* dense_output1 = dense1.forward(conv_output);
+        
+        // Add ReLU activation after first dense layer
+        int dense1OutputSize = dense1.getOutputSize() * NUM_IMAGES;
+        dim3 relu2Block(256);
+        dim3 relu2Grid((dense1OutputSize + 255) / 256);
+        reluActivationKernel<<<relu2Grid, relu2Block>>>(dense_output1, dense_output1, 
+                                                       dense1OutputSize);
+        
         float* dense_output2 = dense2.forward(dense_output1);
-
+        
         // Apply softmax activation
         float* softmax_output;
         cudaMalloc(&softmax_output, 10 * NUM_IMAGES * sizeof(float));

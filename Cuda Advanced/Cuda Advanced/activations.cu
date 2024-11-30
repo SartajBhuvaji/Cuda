@@ -1,13 +1,10 @@
 ﻿// activations.cu
 
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
+#include "activations.cuh"
 #include <cmath>
 
-
-
 // Leaky ReLU activation function
-__global__ void leakyReluKernel(float* input, float* output, int size, float alpha = 0.01f) {
+__global__ void leakyReluKernel(float* input, float* output, int size, float alpha) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         output[idx] = input[idx] > 0 ? input[idx] : alpha * input[idx];
@@ -31,7 +28,7 @@ __global__ void tanhKernel(float* input, float* output, int size) {
 }
 
 // ELU (Exponential Linear Unit) activation function
-__global__ void eluKernel(float* input, float* output, int size, float alpha = 1.0f) {
+__global__ void eluKernel(float* input, float* output, int size, float alpha) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         output[idx] = input[idx] >= 0 ? input[idx] : alpha * (expf(input[idx]) - 1);
@@ -99,10 +96,22 @@ __global__ void softmaxKernel(float* input, float* output, int batchSize, int nu
     }
 }
 
+__global__ void reluActivationKernel(float* input, float* output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        output[idx] = max(0.0f, input[idx]);
+    }
+}
 
+__global__ void reluBackwardKernel(float* input, float* gradOutput, float* gradInput, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        gradInput[idx] = input[idx] > 0.0f ? gradOutput[idx] : 0.0f;
+    }
+}
 
 // Wrapper function to launch activation kernels
-void applyActivation(float* input, float* output, int size, const char* activationType, int classes = 10) {
+void applyActivation(float* input, float* output, int size, const char* activationType, int classes) {
     cudaError_t error;
    
     int blockSize = 256;
