@@ -47,52 +47,35 @@ __global__ void seluKernel(float* input, float* output, int size) {
 }
 
 // Softmax activation function (for the last layer of classification networks)
-//__global__ void softmaxKernel(float* input, float* output, int size, int classes) {
-//    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//    if (idx < size) {
-//        int start = (idx / classes) * classes;
-//        int end = start + classes;
-//
-//        float max_val = input[start];
-//        for (int i = start + 1; i < end; ++i) {
-//            max_val = fmaxf(max_val, input[i]);
-//        }
-//
-//        float sum = 0.0f;
-//        for (int i = start; i < end; ++i) {
-//            sum += expf(input[i] - max_val);
-//        }
-//
-//        output[idx] = expf(input[idx] - max_val) / sum;
-//    }
-//}
+__global__ void softmaxKernel(float* input, float* output, int batchSize, int numClasses) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < batchSize) {
+        // Find max value for numerical stability
+        float maxVal = -INFINITY;
+        for (int i = 0; i < numClasses; ++i) {
+            maxVal = fmaxf(maxVal, input[idx * numClasses + i]);
+        }
+
+        // Compute exp and sum
+        float sum = 0.0f;
+        for (int i = 0; i < numClasses; ++i) {
+            float val = expf(input[idx * numClasses + i] - maxVal);
+            output[idx * numClasses + i] = val;
+            sum += val;
+        }
+
+        // Normalize
+        for (int i = 0; i < numClasses; ++i) {
+            output[idx * numClasses + i] /= sum;
+        }
+    }
+}
 
 // ReLU (Rectified Linear Unit) activation function
 __global__ void reluKernel(float* input, float* output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         output[idx] = fmaxf(input[idx], 0.0f);
-    }
-}
-
-// Softmax activation function (for the last layer of classification networks)
-__global__ void softmaxKernel(float* input, float* output, int batchSize, int numClasses) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < batchSize) {
-        float maxVal = -INFINITY;
-        for (int i = 0; i < numClasses; ++i) {
-            maxVal = fmaxf(maxVal, input[idx * numClasses + i]);
-        }
-
-        float sum = 0.0f;
-        for (int i = 0; i < numClasses; ++i) {
-            output[idx * numClasses + i] = expf(input[idx * numClasses + i] - maxVal);
-            sum += output[idx * numClasses + i];
-        }
-
-        for (int i = 0; i < numClasses; ++i) {
-            output[idx * numClasses + i] /= sum;
-        }
     }
 }
 

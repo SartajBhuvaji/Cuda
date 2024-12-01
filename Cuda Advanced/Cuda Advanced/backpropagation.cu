@@ -11,10 +11,10 @@ __global__ void backpropKernel(float* d_output, float* d_target, float* d_gradie
         int batch_idx = idx / outputSize;
         int class_idx = idx % outputSize;
         
-        // Compute gradient: (predicted - actual)
+        // Cross-entropy gradient: (predicted - actual)
         float predicted = d_output[idx];
         float target = d_target[batch_idx * outputSize + class_idx];
-        d_gradients[idx] = (predicted - target) / batchSize;
+        d_gradients[idx] = (predicted - target);
     }
 }
 

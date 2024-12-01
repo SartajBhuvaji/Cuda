@@ -3,23 +3,23 @@
 #include <iostream>
 
 // Kernel for SGD update
-__global__ void sgdWeightsKernel(float* d_weights, float* d_gradients, int size, float learningRate) {
+__global__ void sgdWeightsKernel(float* d_weights, float* d_gradients, float* d_velocity,
+                                int size, float learningRate, float momentum) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        // Clip gradients to prevent explosion
-        float gradient = d_gradients[idx];
-        float max_grad = 1.0f;
-        if (gradient > max_grad) gradient = max_grad;
-        if (gradient < -max_grad) gradient = -max_grad;
-        
-        d_weights[idx] -= learningRate * gradient;
+        // Update velocity
+        d_velocity[idx] = momentum * d_velocity[idx] - learningRate * d_gradients[idx];
+        // Update weights
+        d_weights[idx] += d_velocity[idx];
     }
 }
 
-void sgdUpdateWeights(float* d_weights, float* d_grad_weights, int size, float learningRate) {
+void sgdUpdateWeights(float* d_weights, float* d_gradients, float* d_velocity,
+                     int size, float learningRate, float momentum) {
     int blockSize = 256;
     int numBlocks = (size + blockSize - 1) / blockSize;
-    sgdWeightsKernel<<<numBlocks, blockSize>>>(d_weights, d_grad_weights, size, learningRate);
+    sgdWeightsKernel<<<numBlocks, blockSize>>>(d_weights, d_gradients, d_velocity,
+                                              size, learningRate, momentum);
     cudaDeviceSynchronize();
 }
 

@@ -3,38 +3,32 @@
 #include <iostream>
 
 // Kernel for cross-entropy loss calculation
-__global__ void crossEntropyLossKernel(float* d_output, float* d_target, float* d_loss, int outputSize, int batchSize) {
+__global__ void crossEntropyLossKernel(float* predictions, float* targets, 
+                                      float* loss, int numClasses, int batchSize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < batchSize) {
-        float loss = 0.0f;
-        for (int i = 0; i < outputSize; ++i) {
-            float target = d_target[idx * outputSize + i];
-            float output = d_output[idx * outputSize + i];
-            loss -= target * logf(output + 1e-9); // Add epsilon to prevent log(0)
+        float sample_loss = 0.0f;
+        for (int c = 0; c < numClasses; ++c) {
+            float pred = fmaxf(fminf(predictions[idx * numClasses + c], 1.0f - 1e-7f), 1e-7f);
+            sample_loss -= targets[idx * numClasses + c] * logf(pred);
         }
-        d_loss[idx] = loss;
+        atomicAdd(loss, sample_loss);
     }
 }
 
-float calculateLoss(float* d_output, float* d_target, int outputSize, int batchSize) {
+float calculateLoss(float* predictions, float* targets, int numClasses, int batchSize) {
     float* d_loss;
-    cudaMalloc(&d_loss, batchSize * sizeof(float));
+    cudaMalloc(&d_loss, sizeof(float));
+    cudaMemset(d_loss, 0, sizeof(float));
 
-    int blockSize = 256;
-    int numBlocks = (batchSize + blockSize - 1) / blockSize;
-    crossEntropyLossKernel<<<numBlocks, blockSize>>>(d_output, d_target, d_loss, outputSize, batchSize);
-    cudaDeviceSynchronize();
-
-    float* h_loss = new float[batchSize];
-    cudaMemcpy(h_loss, d_loss, batchSize * sizeof(float), cudaMemcpyDeviceToHost);
-
-    float totalLoss = 0.0f;
-    for (int i = 0; i < batchSize; ++i) {
-        totalLoss += h_loss[i];
-    }
-
-    delete[] h_loss;
+    dim3 block(256);
+    dim3 grid((batchSize + block.x - 1) / block.x);
+    
+    crossEntropyLossKernel<<<grid, block>>>(predictions, targets, d_loss, numClasses, batchSize);
+    
+    float h_loss;
+    cudaMemcpy(&h_loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
     cudaFree(d_loss);
-
-    return totalLoss / batchSize;
+    
+    return h_loss / batchSize;
 } 
