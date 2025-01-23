@@ -239,9 +239,24 @@ int main() {
         float loss = calculateLoss(softmax_output, d_labels_float, 10, NUM_IMAGES);
         std::cout << "Epoch " << epoch + 1 << ": Loss = " << loss << std::endl;
 
-        // Backpropagation
-        backpropagate(softmax_output, d_labels_float, d_gradients_dense4, 10, NUM_IMAGES);
-        
+        // Allocate memory for intermediate gradients
+        float* d_intermediate_gradients = nullptr;
+        cudaError_t error = cudaMalloc(&d_intermediate_gradients, 10 * 10000 * sizeof(float));
+        if (error != cudaSuccess) {
+            fprintf(stderr, "Failed to allocate intermediate gradients: %s\n", cudaGetErrorString(error));
+            // Handle error appropriately
+            return -1; // or other error handling
+        }
+
+        // Perform backpropagation
+        backpropagate(softmax_output, 
+                     d_labels_float, 
+                     d_gradients_dense4,
+                     d_intermediate_gradients,
+                     10,    // outputSize
+                     10000  // batchSize
+        );
+
         // Dense Layer 4 backward
         dense4.backward(dense_output3, d_gradients_dense4);
         clipGradients(dense4.getGradWeights(), 32 * 10);
@@ -271,14 +286,14 @@ int main() {
         sgdUpdateBiases(dense1.getBiases(), dense1.getGradBiases(), 128, LEARNING_RATE);
 
         // Add error checking
-        cudaError_t error = cudaGetLastError();
+        error = cudaGetLastError();
         if (error != cudaSuccess) {
             printf("CUDA error in training loop: %s\n", cudaGetErrorString(error));
             break;
         }
 
-        // Free intermediate gradients
-        cudaFree(d_gradients_dense4);
+        // Clean up
+        cudaFree(d_intermediate_gradients);
     }
 
     // Update evaluation function call

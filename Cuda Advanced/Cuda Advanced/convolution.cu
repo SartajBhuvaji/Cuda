@@ -81,6 +81,16 @@ __global__ void initializeFiltersKernel(float* filters, int inputChannels, int o
     }
 }
 
+// Add this kernel for filter updates
+__global__ void updateFiltersKernel(float* filters, float* gradients, float learningRate, float weightDecay, int totalElements) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < totalElements) {
+        // Apply weight decay and learning rate
+        float update = learningRate * (gradients[idx] + weightDecay * filters[idx]);
+        filters[idx] -= update;
+    }
+}
+
 class ConvolutionLayer {
 private:
     int inputWidth, inputHeight, inputChannels;
@@ -180,19 +190,59 @@ public:
     }
 
     void updateFilters(float* gradients, float learningRate) {
-        // This is a placeholder for the actual update logic
-        // you'd apply the gradients to update the filters
+        int totalElements = FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels;
         
-        // cudaMemcpy(h_filters, d_filters, filterSize, cudaMemcpyDeviceToHost);
-        // Update h_filters using gradients and learning rate
-        // cudaMemcpy(d_filters, h_filters, filterSize, cudaMemcpyHostToDevice);
+        // Launch kernel to update filters
+        int blockSize = 256;
+        int gridSize = (totalElements + blockSize - 1) / blockSize;
+        
+        float weightDecay = 0.0001f; // Add weight decay to prevent overfitting
+        updateFiltersKernel<<<gridSize, blockSize>>>(d_filters, d_grad_filters, learningRate, weightDecay, totalElements);
+        
+        // Synchronize to ensure updates are complete
+        cudaDeviceSynchronize();
+        
+        // Check for errors
+        cudaError_t error = cudaGetLastError();
+        if (error != cudaSuccess) {
+            fprintf(stderr, "Failed to update filters: %s\n", cudaGetErrorString(error));
+        }
     }
 
-	void backprop(float* gradients) {
-		// This is a placeholder for the actual backpropagation logic
-		//  you'd calculate the gradients and backpropagate them
-		
-        //updateFilters();
+	void backward(float* d_input, float* d_gradients) {
+        // Reset gradients to zero
+        cudaMemset(d_grad_filters, 0, FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels * sizeof(float));
+
+        dim3 blockDim(16, 16);
+        dim3 gridDim(
+            (outputWidth + blockDim.x - 1) / blockDim.x,
+            (outputHeight + blockDim.y - 1) / blockDim.y,
+            batchSize
+        );
+
+        // First compute gradients for filters
+        convBackwardKernel<<<gridDim, blockDim>>>(
+            d_output, 
+            d_gradients, 
+            d_input, 
+            d_grad_filters,
+            inputWidth, inputHeight, 
+            outputWidth, outputHeight, 
+            inputChannels, 
+            batchSize
+        );
+        
+        cudaDeviceSynchronize();
+        
+        // Check for errors
+        cudaError_t error = cudaGetLastError();
+        if (error != cudaSuccess) {
+            fprintf(stderr, "Failed to compute filter gradients: %s\n", cudaGetErrorString(error));
+            return;
+        }
+
+        // Update the filters using computed gradients
+        updateFilters(d_grad_filters, 0.001f);
 	}
 
     // Getter methods
@@ -206,22 +256,6 @@ public:
 
 	float* getFilters() const { return d_filters; }
     int getBatchSize() const { return batchSize; }
-
-    void backward(float* d_input, float* d_gradients) {
-        // Reset gradients to zero
-        cudaMemset(d_grad_filters, 0, FILTER_SIZE * FILTER_SIZE * inputChannels * outputChannels * sizeof(float));
-
-        dim3 blockDim(16, 16);
-        dim3 gridDim(
-            (outputWidth + blockDim.x - 1) / blockDim.x,
-            (outputHeight + blockDim.y - 1) / blockDim.y,
-            batchSize
-        );
-
-        convBackwardKernel<<<gridDim, blockDim>>>(d_output, d_gradients, d_input, d_grad_filters, 
-            inputWidth, inputHeight, outputWidth, outputHeight, inputChannels, batchSize);
-        cudaDeviceSynchronize();
-    }
 
     float* getGradFilters() const { return d_grad_filters; }
 
