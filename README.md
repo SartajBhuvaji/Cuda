@@ -1,4 +1,4 @@
-# Neural Net/Cuda Advanced Repository
+# CUDA-Optimized Convolutional Neural Network
 
 ## Overview
 Designed and developed a Convolution Neural Network (CNN) library using CUDA C++, which allows for efficient training and inference of deep learning models on NVIDIA GPUs. The library features a modular design that allows for easy extension and customization of network architectures. It provides an implementation of the forward and backward passes for convolutional layers, dense layers, and pooling operations. The library also includes support for popular activation functions, loss functions, and optimization algorithms. I then train a simple CNN network on the CIFAR 10 dataset achieving 85% accuracy.
