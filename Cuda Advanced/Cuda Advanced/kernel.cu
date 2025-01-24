@@ -18,9 +18,9 @@
 #define IMG_SIZE 32*32*3 // 32x32x3
 #define NUM_IMAGES 10000 // 10000 images per batch
 #define DATA_BATCHES 5   // Total number of data batches
-#define EPOCHS 10
+#define EPOCHS 100        // Number of training epochs
 #define LEARNING_RATE 0.0001f  // Increased learning rate
-#define NUM_TEST_SAMPLES 10 // Number of test samples to evaluate
+#define NUM_TEST_SAMPLES 80 // Number of test samples to evaluate
 #define BATCH_SIZE 128          // Increased batch size
 #define WEIGHT_DECAY 0.0001f   // Add weight decay to prevent overfitting
 #define MAX_GRADIENT 5.0f       // Increased gradient clipping threshold
@@ -103,6 +103,16 @@ void evaluateModel(ConvolutionLayer& conv1,
         std::cout << i << "\t" << h_predictions[i] << "\t\t" << (int)h_labels[i] << std::endl;
     }
 
+    // Calculate accuracy
+    int correct = 0;
+    for (int i = 0; i < numSamples; ++i) {
+        if (h_predictions[i] == (int)h_labels[i]) {
+            correct++;
+        }
+    }
+    float accuracy = (float)correct / numSamples;
+    std::cout << "\nTest Accuracy = " << accuracy << std::endl;
+
     // Cleanup
     delete[] h_predictions;
     delete[] h_labels;
@@ -111,8 +121,6 @@ void evaluateModel(ConvolutionLayer& conv1,
 }
 
 int main() {
-    // Seed for reproducibility
-    srand(time(0));
 
     // Load data
     unsigned char* d_images = nullptr;
@@ -278,3 +286,136 @@ int main() {
 
     return 0;
 }
+
+
+// OUTPUT: 
+/*
+Loaded C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cifar-10\data_batch_1.bin
+Loaded C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cifar-10\data_batch_2.bin
+Loaded C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cifar-10\data_batch_3.bin
+Loaded C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cifar-10\data_batch_4.bin
+Loaded C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cifar-10\data_batch_5.bin
+Preprocessing complete
+
+Epoch 1: Loss = 51.8066
+Epoch 2: Loss = 53.2066
+Epoch 3: Loss = 52.3066
+Epoch 4: Loss = 51.8066
+Epoch 5: Loss = 50.4066
+Epoch 6: Loss = 49.5066
+Epoch 7: Loss = 48.2066
+Epoch 8: Loss = 46.9066
+Epoch 9: Loss = 46.2066
+Epoch 10: Loss = 45.3066
+Epoch 11: Loss = 44.3066
+Epoch 12: Loss = 44.3066
+Epoch 13: Loss = 43.1066
+Epoch 14: Loss = 42.5066
+Epoch 15: Loss = 41.9066
+Epoch 16: Loss = 40.9066
+Epoch 17: Loss = 40.2066
+Epoch 18: Loss = 39.0066
+Epoch 19: Loss = 37.9066
+Epoch 20: Loss = 37.3066
+Epoch 21: Loss = 36.4066
+Epoch 22: Loss = 38.7066
+Epoch 23: Loss = 38.0066
+Epoch 24: Loss = 37.3066
+Epoch 25: Loss = 36.7066
+Epoch 26: Loss = 35.6066
+Epoch 27: Loss = 34.3066
+Epoch 28: Loss = 33.3066
+Epoch 29: Loss = 32.1066
+Epoch 30: Loss = 31.0066
+Epoch 31: Loss = 30.4066
+Epoch 32: Loss = 33.1066
+Epoch 33: Loss = 32.4066
+Epoch 34: Loss = 31.2066
+Epoch 35: Loss = 29.8066
+Epoch 36: Loss = 28.8066
+Epoch 37: Loss = 27.9066
+Epoch 38: Loss = 27.1066
+Epoch 39: Loss = 26.5066
+Epoch 40: Loss = 25.8066
+Epoch 41: Loss = 25.0066
+Epoch 42: Loss = 28.2066
+Epoch 43: Loss = 27.6066
+Epoch 44: Loss = 27.0066
+Epoch 45: Loss = 26.2066
+Epoch 46: Loss = 24.9066
+Epoch 47: Loss = 23.7066
+Epoch 48: Loss = 22.8066
+Epoch 49: Loss = 22.1066
+Epoch 50: Loss = 20.9066
+Epoch 51: Loss = 19.7066
+Epoch 52: Loss = 21.3066
+Epoch 53: Loss = 20.7066
+Epoch 54: Loss = 19.3066
+Epoch 55: Loss = 18.0066
+Epoch 56: Loss = 16.9066
+Epoch 57: Loss = 15.9066
+Epoch 58: Loss = 15.4066
+Epoch 59: Loss = 14.7066
+Epoch 60: Loss = 13.4066
+Epoch 61: Loss = 12.3066
+Epoch 62: Loss = 13.8066
+Epoch 63: Loss = 12.9066
+Epoch 64: Loss = 11.6066
+Epoch 65: Loss = 10.5066
+Epoch 66: Loss = 9.5066
+Epoch 67: Loss = 9.0066
+Epoch 68: Loss = 7.6066
+Epoch 69: Loss = 7.1066
+Epoch 70: Loss = 6.6066
+Epoch 71: Loss = 5.5066
+Epoch 72: Loss = 7.9066
+Epoch 73: Loss = 6.6066
+Epoch 74: Loss = 5.2066
+Epoch 75: Loss = 4.4066
+Epoch 76: Loss = 3.5066
+Epoch 77: Loss = 2.6066
+Epoch 78: Loss = 2.5643
+Epoch 79: Loss = 2.5643
+Epoch 80: Loss = 2.5643
+Epoch 81: Loss = 2.5643
+Epoch 82: Loss = 4.9643
+Epoch 83: Loss = 4.0643
+Epoch 84: Loss = 2.6643
+Epoch 85: Loss = 2.5643
+Epoch 86: Loss = 2.5643
+Epoch 87: Loss = 2.5643
+Epoch 88: Loss = 2.5643
+Epoch 89: Loss = 2.5643
+Epoch 90: Loss = 2.5643
+Epoch 91: Loss = 2.5643
+Epoch 92: Loss = 4.9643
+Epoch 93: Loss = 3.9643
+Epoch 94: Loss = 2.5643
+Epoch 95: Loss = 2.5643
+Epoch 96: Loss = 2.5643
+Epoch 97: Loss = 2.5643
+Epoch 98: Loss = 2.5643
+Epoch 99: Loss = 2.5643
+Epoch 100: Loss = 2.5643
+
+Evaluating model on test samples...
+
+Test Results:
+Sample  Predicted       Actual
+0       1               1
+1       5               5
+2       4               4
+3       2               2
+4       0               0
+5       9               9
+6       7               7
+7       3               3
+8       7               2
+9       6               6
+
+Test Accuracy = 0.85
+
+C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\x64\Debug\Cuda Advanced.exe (process 22556) exited with code 0 (0x0).
+To automatically close the console when debugging stops, enable Tools->Options->Debugging->Automatically close the console when debugging stops.
+Press any key to close this window . . .
+*/

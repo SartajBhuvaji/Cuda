@@ -7,9 +7,7 @@ __global__ void sgdWeightsKernel(float* d_weights, float* d_gradients, float* d_
                                 int size, float learningRate, float momentum) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        // Update velocity
         d_velocity[idx] = momentum * d_velocity[idx] - learningRate * d_gradients[idx];
-        // Update weights
         d_weights[idx] += d_velocity[idx];
     }
 }
