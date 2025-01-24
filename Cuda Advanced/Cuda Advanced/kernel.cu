@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
+#include "cuda_utils.cuh"
 #include "load_images.cu"
 #include "preprocess_images.cu"
 #include "verify_images.cu"
@@ -23,14 +24,6 @@
 #define BATCH_SIZE 128          // Increased batch size
 #define WEIGHT_DECAY 0.0001f   // Add weight decay to prevent overfitting
 #define MAX_GRADIENT 5.0f       // Increased gradient clipping threshold
-
-// Add this helper function at the top of the file
-void checkCudaError(cudaError_t error, const char* message) {
-    if (error != cudaSuccess) {
-        fprintf(stderr, "CUDA error at %s: %s\n", message, cudaGetErrorString(error));
-        exit(-1);
-    }
-}
 
 // Function to get predicted class (returns index of maximum value)
 __global__ void getPredictedClass(float* softmax_output, int* predictions, int batchSize, int numClasses) {
@@ -115,38 +108,6 @@ void evaluateModel(ConvolutionLayer& conv1,
     delete[] h_labels;
     cudaFree(softmax_output);
     cudaFree(d_predictions);
-}
-
-void gpu_mem_info() {
-    size_t free_byte;
-    size_t total_byte;
-    cudaMemGetInfo(&free_byte, &total_byte);
-    double free_db = (double)free_byte;
-    double total_db = (double)total_byte;
-    double used_db = total_db - free_db;
-    std::cout << "\nGPU memory usage: used = " << used_db / 1024.0 / 1024.0 << "MB, free = " << free_db / 1024.0 / 1024.0 << "MB, total = " << total_db / 1024.0 / 1024.0 << "MB" << std::endl;
-}
-
-__global__ void clipGradientsKernel(float* gradients, int size, float max_value) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
-        if (gradients[idx] > max_value) gradients[idx] = max_value;
-        if (gradients[idx] < -max_value) gradients[idx] = -max_value;
-    }
-}
-
-void clipGradients(float* d_gradients, int size) {
-    dim3 block(256);
-    dim3 grid((size + block.x - 1) / block.x);
-    clipGradientsKernel<<<grid, block>>>(d_gradients, size, MAX_GRADIENT);
-    cudaDeviceSynchronize();
-}
-
-__global__ void normalizeInputsKernel(float* input, int size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
-        input[idx] = input[idx] / 255.0f;  // Normalize to [0,1]
-    }
 }
 
 int main() {
@@ -259,28 +220,28 @@ int main() {
 
         // Dense Layer 4 backward
         dense4.backward(dense_output3, d_gradients_dense4);
-        clipGradients(dense4.getGradWeights(), 32 * 10);
+        clipGradients(dense4.getGradWeights(), 32 * 10, MAX_GRADIENT);
         sgdUpdateWeights(dense4.getWeights(), dense4.getGradWeights(), dense4.getVelocityWeights(),
                         32 * 10, LEARNING_RATE, 0.9f);
         sgdUpdateBiases(dense4.getBiases(), dense4.getGradBiases(), 10, LEARNING_RATE);
 
         // Dense Layer 3 backward
         dense3.backward(dense_output2, dense4.getInputGradients());
-        clipGradients(dense3.getGradWeights(), 64 * 32);
+        clipGradients(dense3.getGradWeights(), 64 * 32, MAX_GRADIENT);
         sgdUpdateWeights(dense3.getWeights(), dense3.getGradWeights(), dense3.getVelocityWeights(),
                         64 * 32, LEARNING_RATE, 0.9f);
         sgdUpdateBiases(dense3.getBiases(), dense3.getGradBiases(), 32, LEARNING_RATE);
 
         // Dense Layer 2 backward
         dense2.backward(dense_output1, dense3.getInputGradients());
-        clipGradients(dense2.getGradWeights(), 128 * 64);
+        clipGradients(dense2.getGradWeights(), 128 * 64, MAX_GRADIENT);
         sgdUpdateWeights(dense2.getWeights(), dense2.getGradWeights(), dense2.getVelocityWeights(),
                         128 * 64, LEARNING_RATE, 0.9f);
         sgdUpdateBiases(dense2.getBiases(), dense2.getGradBiases(), 64, LEARNING_RATE);
 
         // Dense Layer 1 backward
         dense1.backward(conv_output, dense2.getInputGradients());
-        clipGradients(dense1.getGradWeights(), conv_output_size * 128);
+        clipGradients(dense1.getGradWeights(), conv_output_size * 128, MAX_GRADIENT);
         sgdUpdateWeights(dense1.getWeights(), dense1.getGradWeights(), dense1.getVelocityWeights(),
                         conv_output_size * 128, LEARNING_RATE, 0.9f);
         sgdUpdateBiases(dense1.getBiases(), dense1.getGradBiases(), 128, LEARNING_RATE);

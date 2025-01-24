@@ -211,6 +211,7 @@ C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\activations.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\activations.cuh
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\backpropagation.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\convolution.cu
+C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\cuda_utils.cuh
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\dense_layer.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\load_images.cu
 C:\Users\sbhuv\Desktop\Cuda\Cuda\Cuda Advanced\Cuda Advanced\loss.cu
