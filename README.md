@@ -21,6 +21,11 @@ Designed and developed a Convolution Neural Network (CNN) library using CUDA C++
 - Cuda compilation tools, release 12.6, V12.6.20
 - Build cuda_12.6.r12.6/compiler.34431801_0
 
+
+## Training Run
+![7](https://github.com/user-attachments/assets/f601748f-51ea-4ad9-968a-fc6d8862fd5b)
+
+
 ## Documentation
 - [NVIDIA CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/index.html)
 - [CUDA C Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
