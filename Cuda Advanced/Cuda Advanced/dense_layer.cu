@@ -178,11 +178,6 @@ public:
         return d_output;
     }
 
-    // Placeholder for backpropagation function
-    // void backpropagate(const float* gradients, float learningRate) {
-    //     // TODO: Implement backpropagation
-    //     // This will update weights and biases based on the gradients
-    // }
 
     int getOutputSize() const { return outputSize; }
     int getBatchSize() const { return batchSize; }
