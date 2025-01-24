@@ -30,3 +30,5 @@ Designed and developed a Convolution Neural Network (CNN) library using CUDA C++
 - [NVIDIA CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/index.html)
 - [CUDA C Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)
 
+## Kernel.cu file
+- [kernel.cu](https://github.com/SartajBhuvaji/Cuda/blob/main/Neural%20Net/Cuda%20Advanced/kernel.cu)
